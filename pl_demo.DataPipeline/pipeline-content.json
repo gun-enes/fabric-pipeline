@@ -1,0 +1,33 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "name": "Set Greeting Output",
+        "type": "SetVariable",
+        "dependsOn": [],
+        "policy": {
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "variableName": "result",
+          "value": {
+            "value": "@concat('Message: ', pipeline().parameters.greeting)",
+            "type": "Expression"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "greeting": {
+        "type": "string",
+        "defaultValue": "hello from dev(powerbi ws)"
+      }
+    },
+    "variables": {
+      "result": {
+        "type": "String"
+      }
+    }
+  }
+}
