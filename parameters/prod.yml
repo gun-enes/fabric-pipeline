@@ -1,10 +1,4 @@
-# fabric-cicd parameter file for the "prod" environment.
-# deploy/deploy.py copies this to ./parameter.yml before deploying.
-# Every replace_value must be keyed by the environment name ("prod").
-# Keep the same entries in dev/test/prod; only the values should differ.
-
 key_value_replace:
-    # --- pl_demo pipeline parameters (one entry per value) ---------------
     - find_key: $.properties.parameters.greeting.defaultValue
       replace_value:
           prod: "hello from prod"
@@ -17,7 +11,6 @@ key_value_replace:
       item_type: "DataPipeline"
       item_name: "pl_demo"
 
-    # Non-string values: leave unquoted so the JSON type is kept.
     - find_key: $.properties.parameters.batch_size.defaultValue
       replace_value:
           prod: 5000
@@ -30,22 +23,18 @@ key_value_replace:
       item_type: "DataPipeline"
       item_name: "pl_demo"
 
-    # Dynamic value: resolved at deploy time to the target workspace's ID.
     - find_key: $.properties.parameters.target_workspace_id.defaultValue
       replace_value:
           prod: "$workspace.$id"
       item_type: "DataPipeline"
       item_name: "pl_demo"
 
-    # --- Activity setting, located with a JSONPath filter -----------------
     - find_key: $.properties.activities[?(@.name=="Wait Before Run")].typeProperties.waitTimeInSeconds
       replace_value:
           prod: 10
       item_type: "DataPipeline"
       item_name: "pl_demo"
 
-    # --- pl_process_tables pipeline parameters ---------------------------
-    # Lists become JSON arrays.
     - find_key: $.properties.parameters.tables.defaultValue
       replace_value:
           prod:
@@ -72,11 +61,3 @@ key_value_replace:
           prod: false
       item_type: "DataPipeline"
       item_name: "pl_process_tables"
-
-# Literal text that appears in many places (e.g. a dev lakehouse GUID) is
-# easier to swap with find_replace than with one key_value_replace per spot:
-#
-# find_replace:
-#     - find_value: "<dev-lakehouse-guid>"
-#       replace_value:
-#           prod: "$items.Lakehouse.<lakehouse-name>.$id"
