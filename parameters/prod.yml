@@ -44,6 +44,35 @@ key_value_replace:
       item_type: "DataPipeline"
       item_name: "pl_demo"
 
+    # --- pl_process_tables pipeline parameters ---------------------------
+    # Lists become JSON arrays.
+    - find_key: $.properties.parameters.tables.defaultValue
+      replace_value:
+          prod:
+              - "dbo.customers"
+              - "dbo.orders"
+              - "dbo.invoices"
+      item_type: "DataPipeline"
+      item_name: "pl_process_tables"
+
+    - find_key: $.properties.parameters.load_type.defaultValue
+      replace_value:
+          prod: "incremental"
+      item_type: "DataPipeline"
+      item_name: "pl_process_tables"
+
+    - find_key: $.properties.parameters.wait_seconds_per_table.defaultValue
+      replace_value:
+          prod: 5
+      item_type: "DataPipeline"
+      item_name: "pl_process_tables"
+
+    - find_key: $.properties.parameters.fail_on_empty.defaultValue
+      replace_value:
+          prod: false
+      item_type: "DataPipeline"
+      item_name: "pl_process_tables"
+
 # Literal text that appears in many places (e.g. a dev lakehouse GUID) is
 # easier to swap with find_replace than with one key_value_replace per spot:
 #

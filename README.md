@@ -4,7 +4,8 @@ Fabric items (template) + per-environment parameter files, deployed with
 [fabric-cicd](https://microsoft.github.io/fabric-cicd/) from GitHub Actions.
 
 ```
-pl_demo.DataPipeline/        # template – written by Fabric Git integration from the DEV workspace
+pl_demo.DataPipeline/            # template – written by Fabric Git integration from the DEV workspace
+pl_process_tables.DataPipeline/  # second pipeline: loops over a table list (array parameter)
 parameters/{dev,test,prod}.yml   # per-environment values (fabric-cicd parameter format)
 deploy/deploy.py             # publishes items to the target workspace
 .github/workflows/deploy-fabric.yml  # manual run: pick dev/test/prod
