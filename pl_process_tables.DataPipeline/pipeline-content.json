@@ -10,6 +10,7 @@
             "value": "@and(empty(pipeline().parameters.tables), pipeline().parameters.fail_on_empty)",
             "type": "Expression"
           },
+          "ifFalseActivities": [],
           "ifTrueActivities": [
             {
               "name": "Fail - No Tables",
