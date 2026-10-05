@@ -1,0 +1,3 @@
+# Generated in CI from parameters/<env>.yml
+/parameter.yml
+.venv/

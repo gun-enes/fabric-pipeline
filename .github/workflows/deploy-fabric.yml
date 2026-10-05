@@ -1,0 +1,34 @@
+name: Deploy Fabric items
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment (selects parameters/<env>.yml)
+        type: choice
+        options: [dev, test, prod]
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # GitHub Environment: holds per-env secrets/vars and optional approval rules.
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install fabric-cicd azure-identity
+
+      - name: Deploy
+        env:
+          FABRIC_ENVIRONMENT: ${{ inputs.environment }}
+          FABRIC_WORKSPACE_ID: ${{ vars.FABRIC_WORKSPACE_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        run: python deploy/deploy.py

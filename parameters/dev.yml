@@ -1,0 +1,6 @@
+key_value_replace:
+    - find_key: $.properties.parameters.greeting.defaultValue
+      replace_value:
+          dev: "hello from dev"
+      item_type: "DataPipeline"
+      item_name: "pl_demo"
