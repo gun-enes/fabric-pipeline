@@ -1,6 +1,53 @@
+# fabric-cicd parameter file for the "dev" environment.
+# deploy/deploy.py copies this to ./parameter.yml before deploying.
+# Every replace_value must be keyed by the environment name ("dev").
+# Keep the same entries in dev/test/prod; only the values should differ.
+
 key_value_replace:
+    # --- pl_demo pipeline parameters (one entry per value) ---------------
     - find_key: $.properties.parameters.greeting.defaultValue
       replace_value:
           dev: "hello from dev"
       item_type: "DataPipeline"
       item_name: "pl_demo"
+
+    - find_key: $.properties.parameters.source_folder.defaultValue
+      replace_value:
+          dev: "raw/dev"
+      item_type: "DataPipeline"
+      item_name: "pl_demo"
+
+    # Non-string values: leave unquoted so the JSON type is kept.
+    - find_key: $.properties.parameters.batch_size.defaultValue
+      replace_value:
+          dev: 100
+      item_type: "DataPipeline"
+      item_name: "pl_demo"
+
+    - find_key: $.properties.parameters.is_debug.defaultValue
+      replace_value:
+          dev: true
+      item_type: "DataPipeline"
+      item_name: "pl_demo"
+
+    # Dynamic value: resolved at deploy time to the target workspace's ID.
+    - find_key: $.properties.parameters.target_workspace_id.defaultValue
+      replace_value:
+          dev: "$workspace.$id"
+      item_type: "DataPipeline"
+      item_name: "pl_demo"
+
+    # --- Activity setting, located with a JSONPath filter -----------------
+    - find_key: $.properties.activities[?(@.name=="Wait Before Run")].typeProperties.waitTimeInSeconds
+      replace_value:
+          dev: 1
+      item_type: "DataPipeline"
+      item_name: "pl_demo"
+
+# Literal text that appears in many places (e.g. a dev lakehouse GUID) is
+# easier to swap with find_replace than with one key_value_replace per spot:
+#
+# find_replace:
+#     - find_value: "<dev-lakehouse-guid>"
+#       replace_value:
+#           dev: "$items.Lakehouse.<lakehouse-name>.$id"
