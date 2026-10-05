@@ -2,9 +2,24 @@
   "properties": {
     "activities": [
       {
+        "name": "Wait Before Run",
+        "type": "Wait",
+        "dependsOn": [],
+        "typeProperties": {
+          "waitTimeInSeconds": 1
+        }
+      },
+      {
         "name": "Set Greeting Output",
         "type": "SetVariable",
-        "dependsOn": [],
+        "dependsOn": [
+          {
+            "activity": "Wait Before Run",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
         "policy": {
           "secureOutput": false,
           "secureInput": false
@@ -12,7 +27,7 @@
         "typeProperties": {
           "variableName": "result",
           "value": {
-            "value": "@concat('Message: ', pipeline().parameters.greeting)",
+            "value": "@concat('Message: ', pipeline().parameters.greeting, ' | folder: ', pipeline().parameters.source_folder, ' | batch: ', string(pipeline().parameters.batch_size), ' | debug: ', string(pipeline().parameters.is_debug), ' | workspace: ', pipeline().parameters.target_workspace_id)",
             "type": "Expression"
           }
         }
@@ -21,7 +36,23 @@
     "parameters": {
       "greeting": {
         "type": "string",
-        "defaultValue": "hello from prod2"
+        "defaultValue": "hello from dev(powerbi ws)"
+      },
+      "source_folder": {
+        "type": "string",
+        "defaultValue": "raw/dev"
+      },
+      "batch_size": {
+        "type": "int",
+        "defaultValue": 100
+      },
+      "is_debug": {
+        "type": "bool",
+        "defaultValue": true
+      },
+      "target_workspace_id": {
+        "type": "string",
+        "defaultValue": "00000000-0000-0000-0000-000000000000"
       }
     },
     "variables": {

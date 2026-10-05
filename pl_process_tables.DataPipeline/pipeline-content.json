@@ -1,0 +1,133 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "name": "Check Tables Provided",
+        "type": "IfCondition",
+        "dependsOn": [],
+        "typeProperties": {
+          "expression": {
+            "value": "@and(empty(pipeline().parameters.tables), pipeline().parameters.fail_on_empty)",
+            "type": "Expression"
+          },
+          "ifTrueActivities": [
+            {
+              "name": "Fail - No Tables",
+              "type": "Fail",
+              "dependsOn": [],
+              "typeProperties": {
+                "message": {
+                  "value": "@concat('No tables to process for load_type ', pipeline().parameters.load_type)",
+                  "type": "Expression"
+                },
+                "errorCode": "NO_TABLES"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "For Each Table",
+        "type": "ForEach",
+        "dependsOn": [
+          {
+            "activity": "Check Tables Provided",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "typeProperties": {
+          "items": {
+            "value": "@pipeline().parameters.tables",
+            "type": "Expression"
+          },
+          "isSequential": true,
+          "activities": [
+            {
+              "name": "Simulate Load",
+              "type": "Wait",
+              "dependsOn": [],
+              "typeProperties": {
+                "waitTimeInSeconds": {
+                  "value": "@pipeline().parameters.wait_seconds_per_table",
+                  "type": "Expression"
+                }
+              }
+            },
+            {
+              "name": "Record Table",
+              "type": "AppendVariable",
+              "dependsOn": [
+                {
+                  "activity": "Simulate Load",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ],
+              "typeProperties": {
+                "variableName": "processed",
+                "value": {
+                  "value": "@concat(item(), ' (', pipeline().parameters.load_type, ')')",
+                  "type": "Expression"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "Set Summary",
+        "type": "SetVariable",
+        "dependsOn": [
+          {
+            "activity": "For Each Table",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "variableName": "summary",
+          "value": {
+            "value": "@concat('Processed ', string(length(variables('processed'))), ' table(s): ', join(variables('processed'), ', '))",
+            "type": "Expression"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "tables": {
+        "type": "array",
+        "defaultValue": [
+          "dbo.customers"
+        ]
+      },
+      "load_type": {
+        "type": "string",
+        "defaultValue": "full"
+      },
+      "wait_seconds_per_table": {
+        "type": "int",
+        "defaultValue": 1
+      },
+      "fail_on_empty": {
+        "type": "bool",
+        "defaultValue": true
+      }
+    },
+    "variables": {
+      "processed": {
+        "type": "Array"
+      },
+      "summary": {
+        "type": "String"
+      }
+    }
+  }
+}

@@ -4,3 +4,58 @@ key_value_replace:
           dev: "hello from dev"
       item_type: "DataPipeline"
       item_name: "pl_demo"
+
+    - find_key: $.properties.parameters.source_folder.defaultValue
+      replace_value:
+          dev: "raw/dev"
+      item_type: "DataPipeline"
+      item_name: "pl_demo"
+
+    - find_key: $.properties.parameters.batch_size.defaultValue
+      replace_value:
+          dev: 100
+      item_type: "DataPipeline"
+      item_name: "pl_demo"
+
+    - find_key: $.properties.parameters.is_debug.defaultValue
+      replace_value:
+          dev: true
+      item_type: "DataPipeline"
+      item_name: "pl_demo"
+
+    - find_key: $.properties.parameters.target_workspace_id.defaultValue
+      replace_value:
+          dev: "$workspace.$id"
+      item_type: "DataPipeline"
+      item_name: "pl_demo"
+
+    - find_key: $.properties.activities[?(@.name=="Wait Before Run")].typeProperties.waitTimeInSeconds
+      replace_value:
+          dev: 1
+      item_type: "DataPipeline"
+      item_name: "pl_demo"
+
+    - find_key: $.properties.parameters.tables.defaultValue
+      replace_value:
+          dev:
+              - "dbo.customers"
+      item_type: "DataPipeline"
+      item_name: "pl_process_tables"
+
+    - find_key: $.properties.parameters.load_type.defaultValue
+      replace_value:
+          dev: "full"
+      item_type: "DataPipeline"
+      item_name: "pl_process_tables"
+
+    - find_key: $.properties.parameters.wait_seconds_per_table.defaultValue
+      replace_value:
+          dev: 1
+      item_type: "DataPipeline"
+      item_name: "pl_process_tables"
+
+    - find_key: $.properties.parameters.fail_on_empty.defaultValue
+      replace_value:
+          dev: true
+      item_type: "DataPipeline"
+      item_name: "pl_process_tables"
