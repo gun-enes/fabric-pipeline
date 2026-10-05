@@ -21,7 +21,7 @@
     "parameters": {
       "greeting": {
         "type": "string",
-        "defaultValue": "hello from dev(powerbi ws)"
+        "defaultValue": "hello from prod2"
       }
     },
     "variables": {
