@@ -12,9 +12,9 @@ Authentication uses DefaultAzureCredential:
 
 import argparse
 import os
-import shutil
 from pathlib import Path
 
+import yaml
 from azure.identity import DefaultAzureCredential
 from fabric_cicd import FabricWorkspace, publish_all_items, unpublish_all_orphan_items
 
@@ -28,8 +28,12 @@ args = parser.parse_args()
 if not args.env or not args.workspace_id:
     parser.error("--env and --workspace-id are required (or set FABRIC_ENVIRONMENT / FABRIC_WORKSPACE_ID)")
 
-# fabric-cicd only reads <repository_directory>/parameter.yml, so copy the chosen env's file there.
-shutil.copyfile(REPO_ROOT / "parameters" / f"{args.env}.yml", REPO_ROOT / "parameter.yml")
+parameter_file = REPO_ROOT / "parameters" / f"{args.env}.yml"
+
+# fabric-cicd only logs an error for a missing `extend` file and deploys without its values; fail instead.
+for included in yaml.safe_load(parameter_file.read_text()).get("extend", []):
+    if not (parameter_file.parent / included).is_file():
+        parser.error(f"{parameter_file.relative_to(REPO_ROOT)} extends missing file: {included}")
 
 workspace = FabricWorkspace(
     workspace_id=args.workspace_id,
@@ -37,6 +41,7 @@ workspace = FabricWorkspace(
     repository_directory=str(REPO_ROOT),
     item_type_in_scope=["DataPipeline"],
     token_credential=DefaultAzureCredential(),
+    parameter_file_path=str(parameter_file),
 )
 
 publish_all_items(workspace)

@@ -1,0 +1,38 @@
+# pl_demo values for the "test" environment (included by ../test.yml).
+
+key_value_replace:
+    - find_key: $.properties.parameters.greeting.defaultValue
+      replace_value:
+          test: "hello from test"
+      item_type: "DataPipeline"
+      item_name: "pl_demo"
+
+    - find_key: $.properties.parameters.source_folder.defaultValue
+      replace_value:
+          test: "raw/test"
+      item_type: "DataPipeline"
+      item_name: "pl_demo"
+
+    - find_key: $.properties.parameters.batch_size.defaultValue
+      replace_value:
+          test: 500
+      item_type: "DataPipeline"
+      item_name: "pl_demo"
+
+    - find_key: $.properties.parameters.is_debug.defaultValue
+      replace_value:
+          test: true
+      item_type: "DataPipeline"
+      item_name: "pl_demo"
+
+    - find_key: $.properties.parameters.target_workspace_id.defaultValue
+      replace_value:
+          test: "$workspace.$id"
+      item_type: "DataPipeline"
+      item_name: "pl_demo"
+
+    - find_key: $.properties.activities[?(@.name=="Wait Before Run")].typeProperties.waitTimeInSeconds
+      replace_value:
+          test: 5
+      item_type: "DataPipeline"
+      item_name: "pl_demo"

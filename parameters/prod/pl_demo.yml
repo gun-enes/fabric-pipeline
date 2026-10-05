@@ -1,0 +1,38 @@
+# pl_demo values for the "prod" environment (included by ../prod.yml).
+
+key_value_replace:
+    - find_key: $.properties.parameters.greeting.defaultValue
+      replace_value:
+          prod: "hello from prod"
+      item_type: "DataPipeline"
+      item_name: "pl_demo"
+
+    - find_key: $.properties.parameters.source_folder.defaultValue
+      replace_value:
+          prod: "raw/prod"
+      item_type: "DataPipeline"
+      item_name: "pl_demo"
+
+    - find_key: $.properties.parameters.batch_size.defaultValue
+      replace_value:
+          prod: 5000
+      item_type: "DataPipeline"
+      item_name: "pl_demo"
+
+    - find_key: $.properties.parameters.is_debug.defaultValue
+      replace_value:
+          prod: false
+      item_type: "DataPipeline"
+      item_name: "pl_demo"
+
+    - find_key: $.properties.parameters.target_workspace_id.defaultValue
+      replace_value:
+          prod: "$workspace.$id"
+      item_type: "DataPipeline"
+      item_name: "pl_demo"
+
+    - find_key: $.properties.activities[?(@.name=="Wait Before Run")].typeProperties.waitTimeInSeconds
+      replace_value:
+          prod: 10
+      item_type: "DataPipeline"
+      item_name: "pl_demo"

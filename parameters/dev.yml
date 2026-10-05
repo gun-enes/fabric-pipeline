@@ -1,61 +1,8 @@
-key_value_replace:
-    - find_key: $.properties.parameters.greeting.defaultValue
-      replace_value:
-          dev: "hello from dev"
-      item_type: "DataPipeline"
-      item_name: "pl_demo"
+# fabric-cicd main parameter file for the "dev" environment.
+# deploy/deploy.py passes this file to fabric-cicd; each file under `extend`
+# is merged in. Paths are relative to this file; nested extend isn't allowed.
+# One file per item; every replace_value is keyed by the env name ("dev").
 
-    - find_key: $.properties.parameters.source_folder.defaultValue
-      replace_value:
-          dev: "raw/dev"
-      item_type: "DataPipeline"
-      item_name: "pl_demo"
-
-    - find_key: $.properties.parameters.batch_size.defaultValue
-      replace_value:
-          dev: 100
-      item_type: "DataPipeline"
-      item_name: "pl_demo"
-
-    - find_key: $.properties.parameters.is_debug.defaultValue
-      replace_value:
-          dev: true
-      item_type: "DataPipeline"
-      item_name: "pl_demo"
-
-    - find_key: $.properties.parameters.target_workspace_id.defaultValue
-      replace_value:
-          dev: "$workspace.$id"
-      item_type: "DataPipeline"
-      item_name: "pl_demo"
-
-    - find_key: $.properties.activities[?(@.name=="Wait Before Run")].typeProperties.waitTimeInSeconds
-      replace_value:
-          dev: 1
-      item_type: "DataPipeline"
-      item_name: "pl_demo"
-
-    - find_key: $.properties.parameters.tables.defaultValue
-      replace_value:
-          dev:
-              - "dbo.customers"
-      item_type: "DataPipeline"
-      item_name: "pl_process_tables"
-
-    - find_key: $.properties.parameters.load_type.defaultValue
-      replace_value:
-          dev: "full"
-      item_type: "DataPipeline"
-      item_name: "pl_process_tables"
-
-    - find_key: $.properties.parameters.wait_seconds_per_table.defaultValue
-      replace_value:
-          dev: 1
-      item_type: "DataPipeline"
-      item_name: "pl_process_tables"
-
-    - find_key: $.properties.parameters.fail_on_empty.defaultValue
-      replace_value:
-          dev: true
-      item_type: "DataPipeline"
-      item_name: "pl_process_tables"
+extend:
+    - "./dev/pl_demo.yml"
+    - "./dev/pl_process_tables.yml"
