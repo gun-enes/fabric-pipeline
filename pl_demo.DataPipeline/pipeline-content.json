@@ -31,6 +31,29 @@
             "type": "Expression"
           }
         }
+      },
+      {
+        "name": "Set Secondary Output",
+        "type": "SetVariable",
+        "dependsOn": [
+          {
+            "activity": "Set Greeting Output",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "variableName": "result",
+          "value": {
+            "value": "@pipeline().parameters.greeting",
+            "type": "Expression"
+          }
+        }
       }
     ],
     "parameters": {
