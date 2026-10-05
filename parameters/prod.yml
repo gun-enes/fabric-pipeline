@@ -1,8 +1,3 @@
-# fabric-cicd main parameter file for the "prod" environment.
-# deploy/deploy.py passes this file to fabric-cicd; each file under `extend`
-# is merged in. Paths are relative to this file; nested extend isn't allowed.
-# One file per item; every replace_value is keyed by the env name ("prod").
-
 extend:
     - "./prod/pl_demo.yml"
     - "./prod/pl_process_tables.yml"
