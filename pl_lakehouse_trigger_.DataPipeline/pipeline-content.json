@@ -1,0 +1,63 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "type": "TridentNotebook",
+        "typeProperties": {
+          "notebookId": "f0496861-ea97-a1b9-4138-e1501604afc5",
+          "workspaceId": "00000000-0000-0000-0000-000000000000"
+        },
+        "externalReferences": {
+          "connection": "ed5080c9-028c-481d-b423-952b1e02eaca"
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Notebook1",
+        "dependsOn": []
+      },
+      {
+        "type": "SqlServerStoredProcedure",
+        "typeProperties": {
+          "database": "wh_identity",
+          "storedProcedureName": "[dbo].[test_sproc]"
+        },
+        "externalReferences": {
+          "connection": "06b14153-efca-4c37-8e03-b017ab7e347e"
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Stored procedure1",
+        "dependsOn": []
+      },
+      {
+        "type": "SqlServerStoredProcedure",
+        "typeProperties": {
+          "database": "wh_identity_test",
+          "storedProcedureName": "[dbo].[test_sproc]"
+        },
+        "externalReferences": {
+          "connection": "ae064c90-4e0b-45d7-a1e2-4bf9ad4ca831"
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Stored procedure2",
+        "dependsOn": []
+      }
+    ]
+  }
+}
