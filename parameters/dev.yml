@@ -1,3 +1,0 @@
-extend:
-    - "./dev/pl_demo.yml"
-    - "./dev/pl_process_tables.yml"

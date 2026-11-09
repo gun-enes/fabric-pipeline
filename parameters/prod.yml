@@ -1,3 +1,0 @@
-extend:
-    - "./prod/pl_demo.yml"
-    - "./prod/pl_process_tables.yml"
