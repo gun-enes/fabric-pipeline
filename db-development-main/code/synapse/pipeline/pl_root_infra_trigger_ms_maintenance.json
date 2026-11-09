@@ -1,0 +1,299 @@
+{
+	"name": "pl_root_infra_trigger_ms_maintenance",
+	"properties": {
+		"activities": [
+			{
+				"name": "activity-read-blob-metadata",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "Execute Initialize Variables",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:30:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "GET",
+					"headers": {
+						"x-ms-version": "2020-04-08"
+					},
+					"url": {
+						"value": "@concat('https://',activity('Execute Initialize Variables').output.pipelineReturnValue.external_storage_account,'.blob.core.windows.net/',pipeline().parameters.folder_path,'/',pipeline().parameters.file_name,'?comp=metadata')",
+						"type": "Expression"
+					},
+					"connectVia": {
+						"referenceName": "VNetEnabledIntegrationRuntime",
+						"type": "IntegrationRuntimeReference"
+					},
+					"authentication": {
+						"type": "MSI",
+						"resource": "https://storage.azure.com/"
+					}
+				}
+			},
+			{
+				"name": "Execute Initialize Variables",
+				"type": "ExecutePipeline",
+				"dependsOn": [],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pl_initialize_variables",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
+				}
+			},
+			{
+				"name": "Set tracking_id",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "activity-read-blob-metadata",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "tracking_id",
+					"value": {
+						"value": "@activity('activity-read-blob-metadata').output.ADFWebActivityResponseHeaders['x-ms-meta-tracking_id']",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Set maintenance_stage",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Set tracking_id",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "maintenance_stage",
+					"value": {
+						"value": "@activity('activity-read-blob-metadata').output.ADFWebActivityResponseHeaders['x-ms-meta-maintenance_stage']",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "If maintenance_stage Cancelled",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Set maintenance_stage",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(variables('maintenance_stage'), 'Cancelled')",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "Upsert Schedule",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "JsonSource",
+									"storeSettings": {
+										"type": "AzureBlobFSReadSettings",
+										"recursive": false,
+										"wildcardFolderPath": {
+											"value": "@replace(pipeline().parameters.folder_path, 'sac-mgmt-main/', '')",
+											"type": "Expression"
+										},
+										"wildcardFileName": {
+											"value": "@pipeline().parameters.file_name",
+											"type": "Expression"
+										},
+										"enablePartitionDiscovery": false
+									},
+									"formatSettings": {
+										"type": "JsonReadSettings"
+									}
+								},
+								"sink": {
+									"type": "SqlDWSink",
+									"writeBehavior": "Upsert",
+									"upsertSettings": {
+										"keys": [
+											"key",
+											"schedule_action"
+										],
+										"interimSchemaName": ""
+									},
+									"sqlWriterUseTableLock": true
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "alertPayload",
+									"type": "DatasetReference",
+									"parameters": {
+										"folderPath": {
+											"value": "@pipeline().parameters.folder_path",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "infraScheduleTable",
+									"type": "DatasetReference",
+									"parameters": {
+										"dbName": {
+											"value": "@pipeline().parameters.database_name",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "activity_execute_pl_create_downtime_triggers_copy1",
+							"type": "ExecutePipeline",
+							"dependsOn": [
+								{
+									"activity": "Upsert Schedule",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "pl_root_infra_create_downtime_triggers",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"database_name": {
+										"value": "@pipeline().parameters.database_name",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "Delete Schedule",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.00:30:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[mgmt_xtinfra].[sp_infra_schedule_delete]",
+								"storedProcedureParameters": {
+									"key": {
+										"value": {
+											"value": "@variables('tracking_id')",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"workspace_name": {
+										"value": {
+											"value": "Actions",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "synw-spf-0091-dev-mgmt-WorkspaceDefaultSqlServer",
+								"type": "LinkedServiceReference",
+								"parameters": {
+									"DBName": {
+										"value": "@pipeline().parameters.database_name",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"database_name": {
+				"type": "string",
+				"defaultValue": "dpspf009101"
+			},
+			"folder_path": {
+				"type": "string"
+			},
+			"file_name": {
+				"type": "string"
+			},
+			"external_storage_account": {
+				"type": "string",
+				"defaultValue": "''"
+			}
+		},
+		"variables": {
+			"maintenance_stage": {
+				"type": "String"
+			},
+			"tracking_id": {
+				"type": "String"
+			}
+		},
+		"annotations": []
+	}
+}

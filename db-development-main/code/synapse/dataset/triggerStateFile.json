@@ -1,0 +1,104 @@
+{
+  "name": "triggerStateFile",
+  "properties": {
+    "linkedServiceName": {
+      "referenceName": "synw-spf-0091-dev-mgmt-WorkspaceDefaultStorage",
+      "type": "LinkedServiceReference"
+    },
+    "parameters": {
+      "workspace_name": {
+        "type": "String",
+        "defaultValue": "synw-spf-0091-dev-mgmt"
+      }
+    },
+    "annotations": [],
+    "type": "Json",
+    "typeProperties": {
+      "location": {
+        "type": "AzureBlobFSLocation",
+        "fileName": {
+          "value": "@concat(dataset().workspace_name,'_triggers.json')",
+          "type": "Expression"
+        },
+        "folderPath": "triggerStateFiles",
+        "fileSystem": "sac-mgmt-main"
+      }
+    },
+    "schema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "etag": {
+          "type": "string"
+        },
+        "properties": {
+          "type": "object",
+          "properties": {
+            "annotations": {
+              "type": "array"
+            },
+            "pipelines": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "pipelineReference": {
+                    "type": "object",
+                    "properties": {
+                      "Type": {
+                        "type": "string"
+                      },
+                      "ReferenceName": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "parameters": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "type": {
+              "type": "string"
+            },
+            "typeProperties": {
+              "type": "object",
+              "properties": {
+                "recurrence": {
+                  "type": "object",
+                  "properties": {
+                    "frequency": {
+                      "type": "string"
+                    },
+                    "interval": {
+                      "type": "integer"
+                    },
+                    "startTime": {
+                      "type": "string"
+                    },
+                    "timeZone": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "runtimeState": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "type": "Microsoft.Synapse/workspaces/datasets"
+}

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build">
+  <Sdk Name="Microsoft.Build.Sql" Version="2.0.0" />
+  <PropertyGroup>
+    <Name>sqlDbProject</Name>
+    <ProjectGuid>{EF9D6F5B-4063-4911-9917-4F197092FE4E}</ProjectGuid>
+    <DSP>Microsoft.Data.Tools.Schema.Sql.SqlDwDatabaseSchemaProvider</DSP>
+    <ModelCollation>1033, CI</ModelCollation>
+    <DefaultCollation>LATIN1_GENERAL_100_CI_AS_SC_UTF8</DefaultCollation>
+  </PropertyGroup>
+  <PropertyGroup>
+    <SuppressTSqlWarnings>71502,71509</SuppressTSqlWarnings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Folder Include="ExternalResources" />
+    <Folder Include="mgmt_xtinfra" />
+    <Folder Include="mgmt_xtinfra\Functions" />
+    <Folder Include="mgmt_xtinfra\StoredProcedures" />
+    <Folder Include="mgmt_xtinfra\Tables" />
+    <Folder Include="Security" />
+    <Folder Include="Security\Roles" />
+    <Folder Include="Security\Schemas" />
+  </ItemGroup>
+  <ItemGroup>
+    <PostDeploy Include="Script.PostDeployment1.sql" />
+    <None Include="Script.PostDeployment_Workspaces.sql" />
+    <None Include="Script.PostDeployment_DefaultSchedules.sql" />
+    <None Include="Script.PostDeployment_GlobalVariables.sql" />
+    <None Include="Script.PostDeployment_ConfigTables.sql" />
+    <None Include="Script2.PostDeployement_AdditionalSettings.sql" />
+    <None Include="Script.PostDeployment_CreateStaticSchemas.sql" />
+    <None Include="Script.PostDeployment_MgmtUserRoleAssignments.sql" />
+    <None Include="Script.PostDeployment_CoreUserRoleAssignments.sql" />
+    <None Include="Script.PostDeployment_ExtUserRoleAssignments.sql" />
+    <None Include="Script.PostDeployment_WorkloadClassifiers.sql" />
+    <None Include="Script.PostDeployment_WorkloadGroups.sql" />
+    <None Include="Script.PostDeployment_CreateEDS.sql" />
+    <None Include="Script.PostDeployment_MasterKey.sql" />
+    <None Include="Script.PostDeployment_v2.0.2_TempOperationsWG.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <SqlCmdVariable Include="app">
+      <Value>$(SqlCmdVar__9)</Value>
+      <DefaultValue>"{     |app_name|:|myGreatApp|,     |app_schema|:|appSchema1|,     |synapse_workspace|:|synw-spf-0091-dev-cr|,     |identity|: {                     |admin_group_name|:|Data Platform-spf-0091-dev-admin-01|,                     |contributor_group_name|:|Data Platform-spf-0091-dev-contributor-01|,                     |operations_group_name|:|Data Platform-spf-0091-dev-ops-01|,                     |reader_group_name|:|Data Platform-spf-0091-dev-reader-01|,                     |reporting_group_name|:[|Data Platform-spf-0091-dev-rep-reader-01|],                     |service_principal_name|:|sp-cor-dev-we1-01-deploy|,                     |synapse_workspace_msi_name|:|synw-spf-0091-dev-cr|                },     |storage|:[                 {|account_name|:|stspf0091devcur|,|container_name|:|sac-core-main|,|name|:|core-cur|},                 {|account_name|:|stspf0091devwks|,|container_name|:|stdlspf0091devcr|,|name|:|core-wks|}               ] }"</DefaultValue>
+    </SqlCmdVariable>
+    <SqlCmdVariable Include="core">
+      <Value>$(SqlCmdVar__12)</Value>
+      <DefaultValue>"{     "identity": {         "admin_group_name": "admin1",          "operations_group_name": "oper1",          "contributor_group_name": "contr1",          "reader_group_name": "read1",          "reporting_group_name": [repo1,repo2],          "synapse_workspace_name": "syna1",          "service_principal_name": "spn1"      },     "storage": {         "account_name": "stac1",          "container_name": "stcont1"     } }"</DefaultValue>
+    </SqlCmdVariable>
+    <SqlCmdVariable Include="extensions">
+      <Value>$(SqlCmdVar__11)</Value>
+      <DefaultValue>{}</DefaultValue>
+    </SqlCmdVariable>
+    <SqlCmdVariable Include="mgmt">
+      <Value>$(SqlCmdVar__10)</Value>
+      <DefaultValue>"{|identity|:{|admin_group_name|:|Data Platform-spf-0091-dev-admin-mgmt|, |contributor_group_name|:|Data Platform-spf-0091-dev-contributor-mgmt|, |operations_group_name|:|Data Platform-spf-0091-dev-ops-mgmt|, |reader_group_name|:|Data Platform-spf-0091-dev-reader-mgmt|, |reporting_group_name|:[], |service_principal_name|:|sp-cor-dev-we1-01-deploy|, |synapse_workspace_msi_name|:|synw-spf-0091-dev-mgmt|}, |key_vault|:{|name|:|kv-spf-0091-dev-mgmt|}, |storage|:[{|account_name|:|stspf0091devcur|, |container_name|:|sac-mgmt-main|,|name|:|mgmt-cur|}, {|account_name|:|stspf0091devwks|,|container_name|:|sac-mgmt-main|,|name|:|mgmt-wks|}], |storage_account|: {|curated|:{|container_names|:[|sac-mgmt-main|],|name|:|stspf0091devcur|}, |external|:{|name|:|stspf0091devext|}, |raw|:{|name|:|stspf0091devraw|}, |workspace|:{|container_names|:[|sac-mgmt-main|],|name|:|stspf0091devwks|}}, |synapse_workspace|:{|name|:|synw-spf-0091-dev-mgmt|, |sql_pool_names|:[|dpspf009101|]}}" </DefaultValue>
+    </SqlCmdVariable>
+    <SqlCmdVariable Include="workspaces">
+      <Value>$(SqlCmdVar__13)</Value>
+      <DefaultValue>[]</DefaultValue>
+    </SqlCmdVariable>
+    <SqlCmdVariable Include="schemas">
+      <Value>$(SqlCmdVar__14)</Value>
+      <DefaultValue>[]</DefaultValue>
+    </SqlCmdVariable>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\sqlDbProject_1.publish.xml" />
+    <None Include="sqlDbProject_1.publish.xml" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(IncludeADPProc)'!='True'">
+    <None Include="mgmt_xtinfra\StoredProcedures\sp_infra_ext_decom.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SqlServer.Dacpacs.Synapse.Master" Version="130.2.2">
+      <DatabaseVariableLiteralValue>master</DatabaseVariableLiteralValue>
+    </PackageReference>
+  </ItemGroup>
+  <Target Name="BeforeBuild">
+    <Delete Files="$(BaseIntermediateOutputPath)\project.assets.json" />
+  </Target>
+  <PropertyGroup>
+    <TreatTSqlWarningsAsErrors>True</TreatTSqlWarningsAsErrors>
+  </PropertyGroup>
+</Project>

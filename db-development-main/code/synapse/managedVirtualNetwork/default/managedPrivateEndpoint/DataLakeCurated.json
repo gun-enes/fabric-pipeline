@@ -1,0 +1,10 @@
+{
+  "name": "DataLakeCurated",
+  "properties": {
+    "privateLinkResourceId": "/subscriptions/10210a04-91a2-408d-b16c-534214814842/resourceGroups/rg-spf-0091-prp-stg/providers/Microsoft.Storage/storageAccounts/stspf0091prpcur",
+    "groupId": "dfs",
+    "fqdns": [
+      "stspf0091prpcur.dfs.core.windows.net"
+    ]
+  }
+}

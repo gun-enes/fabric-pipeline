@@ -1,0 +1,37 @@
+name: Lint and Test
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint and Test
+    runs-on: [adp]
+
+    steps:
+      # Checkout repository
+      - name: Check Out Repository
+        id: checkout_repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Run Linting
+      - name: Run Linting
+        id: linting
+        run: |
+          echo "Install dependencies"
+          python3 -m pip install -r requirements.txt -q
+
+          echo "Initialize Git"
+          git init
+          git add *
+
+          echo "Run pre-commit"
+          python3 -m pre_commit install --install-hooks
+          python3 -m pre_commit run --all-files --verbose

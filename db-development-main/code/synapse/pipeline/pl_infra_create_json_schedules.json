@@ -1,0 +1,312 @@
+{
+	"name": "pl_infra_create_json_schedules",
+	"properties": {
+		"activities": [
+			{
+				"name": "For Each Daily Schedule in the resultSet rows",
+				"description": "For Each Daily Schedule in the resultSet rows, create and start the daily maintenance triggers",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Execute Create JSON Schedule SP",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@if(greater(activity('Execute Create JSON Schedule SP').output.resultSetCount,0),\n    activity('Execute Create JSON Schedule SP').output.resultSets[0].rows,\n    json('[]'))",
+						"type": "Expression"
+					},
+					"batchCount": 15,
+					"activities": [
+						{
+							"name": "activity-create-or-update-trigger",
+							"type": "WebActivity",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.00:10:00",
+								"retry": 3,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"method": "PUT",
+								"url": {
+									"value": "@concat('https://',pipeline().DataFactory,'.dev.azuresynapse.net/triggers/',item().trigger_name,'?api-version=2020-12-01')",
+									"type": "Expression"
+								},
+								"connectVia": {
+									"referenceName": "VNetEnabledIntegrationRuntime",
+									"type": "IntegrationRuntimeReference"
+								},
+								"body": {
+									"value": "@concat(item().json_output)",
+									"type": "Expression"
+								},
+								"authentication": {
+									"type": "MSI",
+									"resource": "https://dev.azuresynapse.net/"
+								}
+							}
+						},
+						{
+							"name": "activity-start-trigger",
+							"type": "WebActivity",
+							"dependsOn": [
+								{
+									"activity": "activity-create-or-update-trigger",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.00:10:00",
+								"retry": 3,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"method": "POST",
+								"url": {
+									"value": "@concat('https://',pipeline().DataFactory,'.dev.azuresynapse.net/triggers/',item().trigger_name,'/start?api-version=2020-12-01')",
+									"type": "Expression"
+								},
+								"connectVia": {
+									"referenceName": "VNetEnabledIntegrationRuntime",
+									"type": "IntegrationRuntimeReference"
+								},
+								"body": "\"\"",
+								"authentication": {
+									"type": "MSI",
+									"resource": "https://dev.azuresynapse.net/"
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "activity-get-all-trigger-workspace",
+				"description": "this activity will list all the triggers in workspace",
+				"type": "WebActivity",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.00:10:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "GET",
+					"url": {
+						"value": "@concat('https://', pipeline().DataFactory,\n'.dev.azuresynapse.net/triggers?api-version=2020-12-01')",
+						"type": "Expression"
+					},
+					"connectVia": {
+						"referenceName": "VNetEnabledIntegrationRuntime",
+						"type": "IntegrationRuntimeReference"
+					},
+					"body": {
+						"properties": {
+							"runtimeState": "stopped"
+						}
+					},
+					"authentication": {
+						"type": "MSI",
+						"resource": "https://dev.azuresynapse.net"
+					}
+				}
+			},
+			{
+				"name": "Set triggers response",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "activity-get-all-trigger-workspace",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "trigger_list",
+					"value": {
+						"value": "@activity('activity-get-all-trigger-workspace').output.value",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "ForEach Trigger in the response",
+				"description": "ForEach Trigger in the response stop and delete the maintenance triggers",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Set triggers response",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@variables('trigger_list')",
+						"type": "Expression"
+					},
+					"batchCount": 15,
+					"activities": [
+						{
+							"name": "If maintenance trigger",
+							"description": "checks if runtimeState state is started or not",
+							"type": "IfCondition",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@or(startswith(item().name,'trg_ms_maintenance_start_'), or(startswith(item().name,'trg_ms_maintenance_stop_'),or(or(startswith(item().name,'maintenance'), equals(item().name, 'trg_dispatch')),or(startswith(item().name,'trg_stats'), startswith(item().name,'trg_maintenance')))))",
+									"type": "Expression"
+								},
+								"ifTrueActivities": [
+									{
+										"name": "activity-stop-trigger",
+										"type": "WebActivity",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "0.00:10:00",
+											"retry": 3,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"method": "POST",
+											"url": {
+												"value": "@concat('https://', pipeline().DataFactory,\n'.dev.azuresynapse.net/triggers/',item().name,\n'/stop?api-version=2020-12-01')",
+												"type": "Expression"
+											},
+											"connectVia": {
+												"referenceName": "VNetEnabledIntegrationRuntime",
+												"type": "IntegrationRuntimeReference"
+											},
+											"body": "\"{}\"",
+											"authentication": {
+												"type": "MSI",
+												"resource": "https://dev.azuresynapse.net"
+											}
+										}
+									},
+									{
+										"name": "activity-delete-trigger",
+										"type": "WebActivity",
+										"dependsOn": [
+											{
+												"activity": "activity-stop-trigger",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"policy": {
+											"timeout": "0.00:10:00",
+											"retry": 3,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"method": "DELETE",
+											"url": {
+												"value": "@concat('https://', pipeline().DataFactory,\n'.dev.azuresynapse.net/triggers/',item().name,\n'?api-version=2020-12-01')\n\n",
+												"type": "Expression"
+											},
+											"connectVia": {
+												"referenceName": "VNetEnabledIntegrationRuntime",
+												"type": "IntegrationRuntimeReference"
+											},
+											"body": "\"{}\"",
+											"authentication": {
+												"type": "MSI",
+												"resource": "https://dev.azuresynapse.net"
+											}
+										}
+									}
+								]
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Execute Create JSON Schedule SP",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "ForEach Trigger in the response",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:10:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "synw-spf-0091-dev-mgmt-WorkspaceDefaultSqlServer",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"DBName": {
+							"value": "@pipeline().parameters.database_name",
+							"type": "Expression"
+						}
+					}
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "EXECUTE [mgmt_xtinfra].[sp_infra_create_json_schedules]"
+						}
+					],
+					"scriptBlockExecutionTimeout": "00:10:00"
+				}
+			}
+		],
+		"parameters": {
+			"database_name": {
+				"type": "string",
+				"defaultValue": "dpspf009101"
+			}
+		},
+		"variables": {
+			"trigger_list": {
+				"type": "Array"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2024-07-30T14:30:05Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

@@ -1,0 +1,25 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "type": "TridentNotebook",
+        "typeProperties": {
+          "notebookId": "d813586a-9e0c-b8e4-45a4-5f3401b011f0",
+          "workspaceId": "00000000-0000-0000-0000-000000000000"
+        },
+        "externalReferences": {
+          "connection": "2f86c684-d313-4d90-a1eb-7f3cbba5f5cb"
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Notebook_2",
+        "dependsOn": []
+      }
+    ]
+  }
+}

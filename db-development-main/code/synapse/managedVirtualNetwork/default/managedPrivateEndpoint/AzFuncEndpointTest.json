@@ -1,0 +1,7 @@
+{
+  "name": "AzFuncEndpointTest",
+  "properties": {
+    "privateLinkResourceId": "/subscriptions/4bfe3963-58bd-4246-905e-6692380a03e2/resourceGroups/rg-cdshrd-dev-dyn/providers/Microsoft.Web/sites/func-cdshrd-dyn-dev",
+    "groupId": "sites"
+  }
+}

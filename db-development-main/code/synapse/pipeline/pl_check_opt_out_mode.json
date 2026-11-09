@@ -1,0 +1,233 @@
+{
+	"name": "pl_check_opt_out_mode",
+	"properties": {
+		"activities": [
+			{
+				"name": "Iterate over each Workspace",
+				"type": "ForEach",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@pipeline().parameters.workspace_list",
+						"type": "Expression"
+					},
+					"isSequential": false,
+					"batchCount": 5,
+					"activities": [
+						{
+							"name": "Get opt-out mode",
+							"type": "Script",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.00:10:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"linkedServiceName": {
+								"referenceName": "synw-spf-0091-dev-mgmt-WorkspaceDefaultSqlServer",
+								"type": "LinkedServiceReference",
+								"parameters": {
+									"DBName": {
+										"value": "@pipeline().parameters.database_name",
+										"type": "Expression"
+									}
+								}
+							},
+							"typeProperties": {
+								"scripts": [
+									{
+										"type": "Query",
+										"text": {
+											"value": "SELECT [value]\nFROM [Actions].[v_infra_config_settings]\nWHERE [synapse_workspace] = '@{split(item().properties.privateLinkResourceId,'/')[8]}'\nAND [name] = 'on-pause-pipeline-wait-opt-out'",
+											"type": "Expression"
+										}
+									}
+								],
+								"scriptBlockExecutionTimeout": "02:00:00"
+							}
+						},
+						{
+							"name": "activity_verify_trigger_optstatus_alignment",
+							"description": "Run this activity only when the trigger corresponds to the right maintenance mode\n\nWorkspace is not a management workspace \nAND\nIt is triggered by MS-driven maintenance and customer has opted-in to stop ETL\nOR\nIt is triggered by Scheduled maintenance to save cost and customer has not be opted-out to stop ETL",
+							"type": "IfCondition",
+							"dependsOn": [
+								{
+									"activity": "activity_get_opt_in_status",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@or(\nand(startswith(pipeline().parameters.p_main_trg_name, 'trg_ms_maintenance_'),equals(activity('activity_get_opt_in_status').output.resultSets[0].rows[0].value, 'enabled')),\n\nand(startswith(pipeline().parameters.p_main_trg_name, 'trg_maintenance_'),equals(activity('Get opt-out mode').output.resultSets[0].rows[0].value, 'disabled'))\n)",
+									"type": "Expression"
+								},
+								"ifTrueActivities": [
+									{
+										"name": "Execute pl_check_active_pipelines",
+										"type": "ExecutePipeline",
+										"dependsOn": [
+											{
+												"activity": "Execute pl_check_management_triggers",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"policy": {
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"pipeline": {
+												"referenceName": "pl_check_active_pipelines",
+												"type": "PipelineReference"
+											},
+											"waitOnCompletion": true,
+											"parameters": {
+												"workspace_name": {
+													"value": "@split(item().properties.privateLinkResourceId,'/')[8]",
+													"type": "Expression"
+												}
+											}
+										}
+									},
+									{
+										"name": "Execute pl_check_management_triggers",
+										"type": "ExecutePipeline",
+										"dependsOn": [],
+										"policy": {
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"pipeline": {
+												"referenceName": "pl_check_management_triggers",
+												"type": "PipelineReference"
+											},
+											"waitOnCompletion": true,
+											"parameters": {
+												"workspace_name": {
+													"value": "@split(item().properties.privateLinkResourceId,'/')[8]",
+													"type": "Expression"
+												},
+												"storage_account": {
+													"value": "@pipeline().parameters.storage_account",
+													"type": "Expression"
+												}
+											}
+										}
+									}
+								],
+								"ifFalseActivities": [
+									{
+										"name": "Truncate Trigger State File",
+										"description": "Workspace did not align with this maintenance mode (opted out / not opted in) - clear the trigger state file so pl_root_infra_maintenance_end does not later restart triggers that were never stopped this cycle",
+										"type": "WebActivity",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "0.00:10:00",
+											"retry": 3,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"method": "PUT",
+											"headers": {
+												"x-ms-version": "2017-11-09",
+												"x-ms-blob-type": "BlockBlob"
+											},
+											"url": {
+												"value": "@concat('https://',pipeline().parameters.storage_account,'.blob.core.windows.net/sac-mgmt-main/triggerStateFiles/',split(item().properties.privateLinkResourceId,'/')[8],'_triggers.json')",
+												"type": "Expression"
+											},
+											"connectVia": {
+												"referenceName": "VNetEnabledIntegrationRuntime",
+												"type": "IntegrationRuntimeReference"
+											},
+											"body": "[]",
+											"authentication": {
+												"type": "MSI",
+												"resource": "https://storage.azure.com/"
+											}
+										}
+									}
+								]
+							}
+						},
+						{
+							"name": "activity_get_opt_in_status",
+							"description": "Gets the opt-in-for-ms-maintenance status  for the workspace from view [Actions].[v_infra_config_settings]",
+							"type": "Script",
+							"dependsOn": [
+								{
+									"activity": "Get opt-out mode",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"linkedServiceName": {
+								"referenceName": "synw-spf-0091-dev-mgmt-WorkspaceDefaultSqlServer",
+								"type": "LinkedServiceReference",
+								"parameters": {
+									"DBName": {
+										"value": "@pipeline().parameters.database_name",
+										"type": "Expression"
+									}
+								}
+							},
+							"typeProperties": {
+								"scripts": [
+									{
+										"type": "Query",
+										"text": {
+											"value": "SELECT [value]\nFROM [Actions].[v_infra_config_settings]\nWHERE [synapse_workspace] = '@{split(item().properties.privateLinkResourceId,'/')[8]}'\nAND [name] = 'opt-in-for-ms-maintenance'",
+											"type": "Expression"
+										}
+									}
+								],
+								"scriptBlockExecutionTimeout": "02:00:00"
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"database_name": {
+				"type": "string",
+				"defaultValue": "dpspf009101"
+			},
+			"workspace_list": {
+				"type": "array"
+			},
+			"storage_account": {
+				"type": "string"
+			},
+			"p_main_trg_name": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "Maintenance_Start_Activities"
+		},
+		"annotations": []
+	}
+}

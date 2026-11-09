@@ -1,0 +1,10 @@
+{
+  "name": "AzureMonitorPrivateLinkScope",
+  "properties": {
+    "privateLinkResourceId": "/subscriptions/10210a04-91a2-408d-b16c-534214814842/resourceGroups/rg-spf-0091-prp-mgmt/providers/Microsoft.Insights/privateLinkScopes/ampls-spf-0091-prp-mgmt",
+    "groupId": "azuremonitor",
+    "fqdns": [
+      "northeurope-2.in.ai.monitor.azure.com"
+    ]
+  }
+}

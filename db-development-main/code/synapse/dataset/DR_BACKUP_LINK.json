@@ -1,0 +1,46 @@
+{
+	"name": "DR_BACKUP_LINK",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "DedicatedForBackup",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"DBName": {
+					"value": "@dataset().dbName",
+					"type": "Expression"
+				},
+				"WorkspaceName": {
+					"value": "@dataset().WorkspaceName",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"dbName": {
+				"type": "string"
+			},
+			"cw_schema": {
+				"type": "string"
+			},
+			"cw_table": {
+				"type": "string"
+			},
+			"WorkspaceName": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "AzureSqlDWTable",
+		"schema": [],
+		"typeProperties": {
+			"schema": {
+				"value": "@dataset().cw_schema",
+				"type": "Expression"
+			},
+			"table": {
+				"value": "@dataset().cw_table",
+				"type": "Expression"
+			}
+		}
+	}
+}

@@ -1,0 +1,111 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"workspaceName": {
+			"value": "synw-spf-0091-dev-mgmt"
+		},
+		"DedicatedForBackup_connectionString": {
+			"value": "Integrated Security=False;Encrypt=True;Connection Timeout=300;Data Source=\"@{concat('tcp:',linkedService().WorkspaceName,'.sql.azuresynapse.net,1433')}\";Initial Catalog=@{linkedService().DBName}"
+		},
+		"SqlServerless001_connectionString": {
+			"value": "Integrated Security=False;Encrypt=True;Connection Timeout=300;Data Source=synw-spf-0091-dev-mgmt-ondemand.sql.azuresynapse.net;Initial Catalog=@{linkedService().DBName}"
+		},
+		"synw-spf-0091-dev-mgmt-WorkspaceDefaultSqlServer_connectionString": {
+			"value": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=tcp:synw-spf-0091-dev-mgmt.sql.azuresynapse.net,1433;Initial Catalog=@{linkedService().DBName}"
+		},
+		"synw-spf-0091-prp-mgmt-WorkspaceDefaultSqlServer_connectionString": {
+			"value": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=tcp:synw-spf-0091-prp-mgmt.sql.azuresynapse.net,1433;Initial Catalog=@{linkedService().DBName}"
+		},
+		"pl_check_opt_out_mode_properties_parameters_database_name_databaseName": {
+			"value": "dpspf009101"
+		},
+		"pl_infra_create_json_schedules_properties_parameters_database_name_databaseName": {
+			"value": "dpspf009101"
+		},
+		"pl_infra_gatherstats_start_properties_parameters_database_name_databaseName": {
+			"value": "dpspf009101"
+		},
+		"pl_infra_maintenance_resume_sqlpools_properties_parameters_database_name_databaseName": {
+			"value": "dpspf009101"
+		},
+		"pl_process_schedules_properties_parameters_database_name_databaseName": {
+			"value": "sqlPool001"
+		},
+		"pl_root_infra_create_downtime_triggers_properties_parameters_database_name_databaseName": {
+			"value": "dpspf009101"
+		},
+		"pl_root_infra_gatherstats_terminate_properties_parameters_database_name_databaseName": {
+			"value": "dpspf009101"
+		},
+		"pl_root_infra_maintenance_end_properties_parameters_database_name_databaseName": {
+			"value": "dpspf009101"
+		},
+		"pl_root_infra_maintenance_start_properties_parameters_database_name_databaseName": {
+			"value": "dpspf009101"
+		},
+		"pl_root_infra_pipe_process_order_properties_parameters_database_name_databaseName": {
+			"value": "dpspf009101"
+		},
+		"pl_root_infra_table_dist_report_properties_parameters_database_name_databaseName": {
+			"value": "dpspf009101"
+		},
+		"pl_root_infra_trigger_ms_maintenance_properties_parameters_database_name_databaseName": {
+			"value": "dpspf009101"
+		},
+		"pl_root_permission_audit_properties_parameters_database_name_databaseName": {
+			"value": "dpspf009101"
+		},
+		"AzureFunctionMnt_properties_typeProperties_functionAppUrl": {
+			"value": "https://func-sfshrd-mnt-dev.azurewebsites.net"
+		},
+		"DataLakeBackup_properties_typeProperties_dfsEndpointUri": {
+			"value": "https://stspf0091devcur.dfs.core.windows.net/"
+		},
+		"DataLakeCurated_properties_typeProperties_dfsEndpointUri": {
+			"value": "https://stspf0091devcur.dfs.core.windows.net/"
+		},
+		"DataLakeExternal_properties_typeProperties_dfsEndpointUri": {
+			"value": "https://stspf0091devext.dfs.core.windows.net/"
+		},
+		"DedicatedForBackup_properties_typeProperties_connectionString": {
+			"value": "Integrated Security=False;Encrypt=True;Connection Timeout=300;Data Source=\"@{concat('tcp:',linkedService().WorkspaceName,'.sql.azuresynapse.net,1433')}\";Initial Catalog=@{linkedService().DBName}"
+		},
+		"KeyVault001_properties_typeProperties_azureKeyVaultBaseUrl": {
+			"value": "https://kv-spf-0091-dev-mgmt.vault.azure.net/"
+		},
+		"KeyVaultFunction_properties_typeProperties_azureKeyVaultBaseUrl": {
+			"value": "https://kv-sfshrd-mnt-dev.vault.azure.net/"
+		},
+		"SqlServerless001_properties_typeProperties_connectionString": {
+			"value": "Integrated Security=False;Encrypt=True;Connection Timeout=300;Data Source=synw-spf-0091-dev-mgmt-ondemand.sql.azuresynapse.net;Initial Catalog=@{linkedService().DBName}"
+		},
+		"synw-spf-0091-dev-mgmt-WorkspaceDefaultSqlServer_properties_typeProperties_connectionString": {
+			"value": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=tcp:synw-spf-0091-dev-mgmt.sql.azuresynapse.net,1433;Initial Catalog=@{linkedService().DBName}"
+		},
+		"synw-spf-0091-dev-mgmt-WorkspaceDefaultStorage_properties_typeProperties_dfsEndpointUri": {
+			"value": "https://stspf0091devwks.dfs.core.windows.net"
+		},
+		"synw-spf-0091-prp-mgmt-WorkspaceDefaultSqlServer_properties_typeProperties_connectionString": {
+			"value": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=tcp:synw-spf-0091-prp-mgmt.sql.azuresynapse.net,1433;Initial Catalog=@{linkedService().DBName}"
+		},
+		"synw-spf-0091-prp-mgmt-WorkspaceDefaultStorage_properties_typeProperties_dfsEndpointUri": {
+			"value": "https://stspf0091prpwks.dfs.core.windows.net"
+		},
+		"trg_ms_maintenance_events_properties_typeProperties_scope": {
+			"value": "/subscriptions/dbb4728c-24de-44b6-b877-f8efef8a73de/resourceGroups/rg-spf-0091-dev-stg/providers/Microsoft.Storage/storageAccounts/stspf0091devext"
+		},
+		"trg_order_created_properties_typeProperties_scope": {
+			"value": "/subscriptions/dbb4728c-24de-44b6-b877-f8efef8a73de/resourceGroups/rg-spf-0091-dev-stg/providers/Microsoft.Storage/storageAccounts/stspf0091devext"
+		},
+		"trg_schedule_created_properties_typeProperties_scope": {
+			"value": "/subscriptions/dbb4728c-24de-44b6-b877-f8efef8a73de/resourceGroups/rg-spf-0001-dev-stg/providers/Microsoft.Storage/storageAccounts/stspf0001devext"
+		},
+		"AutoResolveIntegrationRuntime_properties_typeProperties_computeProperties_region": {
+			"value": "AutoResolve"
+		},
+		"VNetEnabledIntegrationRuntime_properties_typeProperties_computeProperties_region": {
+			"value": "West Europe"
+		}
+	}
+}

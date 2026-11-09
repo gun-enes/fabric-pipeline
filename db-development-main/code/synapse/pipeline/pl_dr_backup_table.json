@@ -1,0 +1,247 @@
+{
+	"name": "pl_dr_backup_table",
+	"properties": {
+		"activities": [
+			{
+				"name": "Backup Single Table Until Backup Success",
+				"description": "Backup Single Table Until Backup Success or Retry Count Is Set to Zero",
+				"type": "Until",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@or(equals(variables('remaining_table'), false), equals(variables('retry_count'), 0))",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Set remaining table boolean variable",
+							"description": "If backup table SPROC activity has no errors then set remaining table Boolean variable to false",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Backup Table",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "remaining_table",
+								"value": {
+									"value": "@if(empty(activity('Backup Table').error), false, true)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Execute Delete Failed Table Blob",
+							"description": "Delete blob before starting backup table to maintain data consistency and prevent any duplicated rows",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "pl_delete_failed_tables_blob",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"filesToDelete": {
+										"value": "@array(json(concat('{\"filename\": \"',pipeline().parameters.filename, '\"}')))",
+										"type": "Expression"
+									}
+								}
+							}
+						},
+						{
+							"name": "Backup Table",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Execute Delete Failed Table Blob",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.01:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[mgmt_xtinfra].[sp_infra_backup_single_table]",
+								"storedProcedureParameters": {
+									"table_schema": {
+										"value": {
+											"value": "@pipeline().parameters.table_schema",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"table_name": {
+										"value": {
+											"value": "@pipeline().parameters.table_name",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"filename": {
+										"value": {
+											"value": "@pipeline().parameters.filename",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "DedicatedForBackup",
+								"type": "LinkedServiceReference",
+								"parameters": {
+									"DBName": {
+										"value": "@pipeline().parameters.source_db",
+										"type": "Expression"
+									},
+									"WorkspaceName": {
+										"value": "@pipeline().parameters.workspace_name",
+										"type": "Expression"
+									}
+								}
+							}
+						},
+						{
+							"name": "Set temporary iterator variable",
+							"description": "Set temporary iterator variable by decrementing retry_count",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Set remaining table boolean variable",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "temp_iterator",
+								"value": {
+									"value": "@sub(variables('retry_count'), 1)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Set retry count variable",
+							"description": "Set retry count variable from temporary iterator variable",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Set temporary iterator variable",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "retry_count",
+								"value": {
+									"value": "@variables('temp_iterator')",
+									"type": "Expression"
+								}
+							}
+						}
+					],
+					"timeout": "0.03:00:00"
+				}
+			},
+			{
+				"name": "If remaining table is true then fail",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Backup Single Table Until Backup Success",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@variables('remaining_table')",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Backup Operation Failed",
+							"type": "Fail",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"message": {
+									"value": "@string(activity('Backup Table').error)",
+									"type": "Expression"
+								},
+								"errorCode": "BACKUP_OPERATION_FAILURE"
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"workspace_name": {
+				"type": "string"
+			},
+			"table_schema": {
+				"type": "string"
+			},
+			"table_name": {
+				"type": "string"
+			},
+			"filename": {
+				"type": "string"
+			},
+			"source_db": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"retry_count": {
+				"type": "Integer",
+				"defaultValue": 3
+			},
+			"temp_iterator": {
+				"type": "Integer",
+				"defaultValue": 3
+			},
+			"remaining_table": {
+				"type": "Boolean",
+				"defaultValue": true
+			}
+		},
+		"annotations": []
+	}
+}

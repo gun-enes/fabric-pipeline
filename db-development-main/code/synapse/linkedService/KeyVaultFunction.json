@@ -1,0 +1,12 @@
+{
+  "name": "KeyVaultFunction",
+  "type": "Microsoft.Synapse/workspaces/linkedservices",
+  "properties": {
+    "description": "Key vault to access function key of maintenance function",
+    "annotations": [],
+    "type": "AzureKeyVault",
+    "typeProperties": {
+      "baseUrl": "https://kv-sfshrd-mnt-dev.vault.azure.net/"
+    }
+  }
+}

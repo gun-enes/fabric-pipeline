@@ -1,0 +1,21 @@
+{
+  "name": "SqlServerless001",
+  "type": "Microsoft.Synapse/workspaces/linkedservices",
+  "properties": {
+    "description": "Synapse Serverless.",
+    "parameters": {
+      "DBName": {
+        "type": "String"
+      }
+    },
+    "type": "AzureSqlDW",
+    "typeProperties": {
+      "connectionString": "Integrated Security=False;Encrypt=True;Connection Timeout=300;Data Source=synw-spf-0091-dev-mgmt-ondemand.sql.azuresynapse.net;Initial Catalog=@{linkedService().DBName}"
+    },
+    "connectVia": {
+      "referenceName": "VNetEnabledIntegrationRuntime",
+      "type": "IntegrationRuntimeReference"
+    },
+    "annotations": []
+  }
+}

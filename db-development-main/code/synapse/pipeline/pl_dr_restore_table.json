@@ -1,0 +1,311 @@
+{
+	"name": "pl_dr_restore_table",
+	"properties": {
+		"activities": [
+			{
+				"name": "Restore Single Table Until Restore Success",
+				"description": "Restore Single Table Until Restore Success or Retry Count Is Set to Zero",
+				"type": "Until",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@or(equals(variables('remaining_table'), false), equals(variables('retry_count'), 0))",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Set remaining table boolean variable",
+							"description": "If restore table SPROC activity has no errors then set remaining table Boolean variable to false",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "If SourceDB is not null update its status",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "remaining_table",
+								"value": {
+									"value": "@if(empty(activity('Restore Table').error), false, true)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Restore Table",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.01:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[mgmt_xtinfra].[sp_infra_restore_single_table]",
+								"storedProcedureParameters": {
+									"table_schema": {
+										"value": {
+											"value": "@pipeline().parameters.table_schema",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"table_name": {
+										"value": {
+											"value": "@pipeline().parameters.table_rename",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"filename": {
+										"value": {
+											"value": "@pipeline().parameters.filename",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "DedicatedForBackup",
+								"type": "LinkedServiceReference",
+								"parameters": {
+									"DBName": {
+										"value": "@pipeline().parameters.target_db",
+										"type": "Expression"
+									},
+									"WorkspaceName": {
+										"value": "@pipeline().parameters.workspace_name",
+										"type": "Expression"
+									}
+								}
+							}
+						},
+						{
+							"name": "Set temporary iterator variable",
+							"description": "Set temporary iterator variable by decrementing retry_count",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Set remaining table boolean variable",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "temp_iterator",
+								"value": {
+									"value": "@sub(variables('retry_count'), 1)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Set retry count variable",
+							"description": "Set retry count variable from temporary iterator variable",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Set temporary iterator variable",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "retry_count",
+								"value": {
+									"value": "@variables('temp_iterator')",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "If SourceDB is not null update its status",
+							"description": "When using pl_root_infra_restore_db_pitr, updating the status in SourceDB is highly necessary. On the other hand, when using pl_root_dr_db_import, the restore table SPROC already updates the status: therefore, it is not necessary. Hence:\nWhen pl_root_infra_restore_db_pitr: SourceDB is not NULL\nWhen pl_root_dr_db_import:            SourceDB is NULL",
+							"type": "IfCondition",
+							"dependsOn": [
+								{
+									"activity": "Restore Table",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@equals(pipeline().parameters.source_db, null)",
+									"type": "Expression"
+								},
+								"ifFalseActivities": [
+									{
+										"name": "Set restore status in source db",
+										"description": "Status is managed in SourceDB",
+										"type": "Script",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "0.00:20:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"linkedServiceName": {
+											"referenceName": "DedicatedForBackup",
+											"type": "LinkedServiceReference",
+											"parameters": {
+												"DBName": {
+													"value": "@pipeline().parameters.source_db",
+													"type": "Expression"
+												},
+												"WorkspaceName": {
+													"value": "@pipeline().parameters.workspace_name",
+													"type": "Expression"
+												}
+											}
+										},
+										"typeProperties": {
+											"scripts": [
+												{
+													"parameters": [
+														{
+															"name": "table_schema",
+															"type": "String",
+															"value": {
+																"value": "@pipeline().parameters.table_schema",
+																"type": "Expression"
+															},
+															"direction": "Input"
+														},
+														{
+															"name": "table_name",
+															"type": "String",
+															"value": {
+																"value": "@pipeline().parameters.table_name",
+																"type": "Expression"
+															},
+															"direction": "Input"
+														},
+														{
+															"name": "restore_status",
+															"type": "String",
+															"value": {
+																"value": "@if(empty(activity('Restore Table').error), 'RESTORE-SUCCESS', 'RESTORE-FAILED')",
+																"type": "Expression"
+															},
+															"direction": "Input"
+														}
+													],
+													"type": "Query",
+													"text": "UPDATE [mgmt_xtinfra].[infra_dr_backup_master]\nSET [status] = @restore_status\n        WHERE\n            [table_schema] = @table_schema\n            AND [table_name] = @table_name;"
+												}
+											],
+											"scriptBlockExecutionTimeout": "02:00:00"
+										}
+									}
+								]
+							}
+						}
+					],
+					"timeout": "0.03:00:00"
+				}
+			},
+			{
+				"name": "If remaining table is true then fail",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Restore Single Table Until Restore Success",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@variables('remaining_table')",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Restore Operation Failed",
+							"type": "Fail",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"message": {
+									"value": "@string(activity('Restore Table').error)",
+									"type": "Expression"
+								},
+								"errorCode": "RESTORE_OPERATION_FAILURE"
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"workspace_name": {
+				"type": "string"
+			},
+			"table_schema": {
+				"type": "string"
+			},
+			"table_name": {
+				"type": "string"
+			},
+			"filename": {
+				"type": "string"
+			},
+			"source_db": {
+				"type": "string"
+			},
+			"target_db": {
+				"type": "string"
+			},
+			"table_rename": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"retry_count": {
+				"type": "Integer",
+				"defaultValue": 3
+			},
+			"temp_iterator": {
+				"type": "Integer",
+				"defaultValue": 3
+			},
+			"remaining_table": {
+				"type": "Boolean",
+				"defaultValue": true
+			}
+		},
+		"annotations": []
+	}
+}

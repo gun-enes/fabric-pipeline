@@ -1,0 +1,237 @@
+{
+	"name": "pl_root_infra_maintenance_start",
+	"properties": {
+		"activities": [
+			{
+				"name": "Execute Initialize Variables",
+				"type": "ExecutePipeline",
+				"dependsOn": [],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pl_initialize_variables",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
+				}
+			},
+			{
+				"name": "Check SQLPool Status",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "send-notification",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:10:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "GET",
+					"url": {
+						"value": "@concat('https://',pipeline().DataFactory,'.dev.azuresynapse.net/sqlPools/',pipeline().parameters.database_name,'?api-version=2020-12-01')",
+						"type": "Expression"
+					},
+					"connectVia": {
+						"referenceName": "VNetEnabledIntegrationRuntime",
+						"type": "IntegrationRuntimeReference"
+					},
+					"authentication": {
+						"type": "MSI",
+						"resource": "https://dev.azuresynapse.net/"
+					}
+				}
+			},
+			{
+				"name": "If Mgmt Pool is Online",
+				"description": "Below are the activities executed under this.\n\nIf the Pool is online, activities inside will run only when the trigger corresponds to the right maintenance mode\n\nWorkspace is not a management workspace \nAND\n(It is triggered by MS-driven maintenance and customer has opted-in to stop ETL\nOR\nIt is triggered by Scheduled maintenance to save cost and customer has not be opted-out to stop ETL)\n\nGOAL is, if above conditions are met, STOP all the triggers, and ensure all the running pipelines finished their execution",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Check SQLPool Status",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(activity('Check SQLPool Status').output.properties.status, 'Online')",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Execute pl_check_opt_out_mode",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "pl_check_opt_out_mode",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"database_name": {
+										"value": "@pipeline().parameters.database_name",
+										"type": "Expression"
+									},
+									"workspace_list": {
+										"value": "@activity('Execute Initialize Variables').output.pipelineReturnValue.synapse_mpe_list",
+										"type": "Expression"
+									},
+									"storage_account": {
+										"value": "@activity('Execute Initialize Variables').output.pipelineReturnValue.storage_account",
+										"type": "Expression"
+									},
+									"p_main_trg_name": {
+										"value": "@pipeline().TriggerName",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					],
+					"ifFalseActivities": [
+						{
+							"name": "Execute Truncate Trigger State Files",
+							"description": "Mgmt pool is offline - opt-in/opt-out cannot be checked and nothing gets stopped this cycle for any workspace, so clear every workspace's trigger state file to prevent pl_root_infra_maintenance_end from later restarting triggers based on a stale file left over from an earlier cycle",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "pl_infra_maintenance_truncate_trigger_states",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"workspace_list": {
+										"value": "@activity('Execute Initialize Variables').output.pipelineReturnValue.synapse_mpe_list",
+										"type": "Expression"
+									},
+									"storage_account": {
+										"value": "@activity('Execute Initialize Variables').output.pipelineReturnValue.storage_account",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "activity_if_triggerd_by_ms_maintenance",
+				"description": "If the Pipeline is triggered by triggers created to manage Microsoft maintenance schedules, do not Pause the SQLPools",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "If Mgmt Pool is Online",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@startswith(pipeline().TriggerName, 'trg_ms_maintenance_')",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "Execute Pause SQLPools Pipeline",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "pl_infra_maintenance_pause_sqlpools",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"storage_account": {
+										"value": "@activity('Execute Initialize Variables').output.pipelineReturnValue.storage_account",
+										"type": "Expression"
+									},
+									"workspace_name": {
+										"value": "@pipeline().DataFactory",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "send-notification",
+				"type": "AzureFunctionActivity",
+				"dependsOn": [
+					{
+						"activity": "Execute Initialize Variables",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:20:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"functionName": "mntNotification",
+					"body": "@concat('{\"subscriptionId\":\"',activity('Execute Initialize Variables').output.pipelineReturnValue.subscription,'\",\"maintenance_status\":\"start\",\"workspaceName\":\"',pipeline().DataFactory,'\"}')",
+					"method": "POST"
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureFunctionMnt",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"parameters": {
+			"database_name": {
+				"type": "string",
+				"defaultValue": "dpspf009101"
+			}
+		},
+		"variables": {
+			"trigger_list": {
+				"type": "Array"
+			}
+		},
+		"folder": {
+			"name": "Maintenance_Start_Activities"
+		},
+		"annotations": [],
+		"lastPublishTime": "2024-07-29T10:40:43Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

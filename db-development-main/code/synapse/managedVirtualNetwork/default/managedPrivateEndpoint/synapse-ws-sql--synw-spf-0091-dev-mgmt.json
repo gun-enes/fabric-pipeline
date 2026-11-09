@@ -1,0 +1,10 @@
+{
+  "name": "synapse-ws-sql--synw-spf-0091-dev-mgmt",
+  "properties": {
+    "privateLinkResourceId": "/subscriptions/dbb4728c-24de-44b6-b877-f8efef8a73de/resourceGroups/rg-spf-0091-dev-mgmt/providers/Microsoft.Synapse/workspaces/synw-spf-0091-dev-mgmt",
+    "groupId": "sql",
+    "fqdns": [
+      "synw-spf-0091-dev-mgmt.5d0bf847-b1dd-4566-99a6-bacaae6beee6.sql.azuresynapse.net"
+    ]
+  }
+}

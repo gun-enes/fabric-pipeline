@@ -1,0 +1,29 @@
+{
+	"name": "trg_order_created",
+	"properties": {
+		"annotations": [],
+		"runtimeState": "Started",
+		"pipelines": [
+			{
+				"pipelineReference": {
+					"referenceName": "pl_root_infra_pipe_process_order",
+					"type": "PipelineReference"
+				},
+				"parameters": {
+					"folder_path": "@triggerBody().folderPath",
+					"file_name": "@triggerBody().fileName"
+				}
+			}
+		],
+		"type": "BlobEventsTrigger",
+		"typeProperties": {
+			"blobPathBeginsWith": "/sac-mgmt-main/blobs/order_created/",
+			"blobPathEndsWith": ".parq",
+			"ignoreEmptyBlobs": true,
+			"scope": "/subscriptions/dbb4728c-24de-44b6-b877-f8efef8a73de/resourceGroups/rg-spf-0091-dev-stg/providers/Microsoft.Storage/storageAccounts/stspf0091devext",
+			"events": [
+				"Microsoft.Storage.BlobCreated"
+			]
+		}
+	}
+}

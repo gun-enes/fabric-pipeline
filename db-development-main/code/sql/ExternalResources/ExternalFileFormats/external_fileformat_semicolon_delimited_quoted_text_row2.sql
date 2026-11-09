@@ -1,0 +1,11 @@
+CREATE EXTERNAL FILE FORMAT [external_fileformat_semicolon_delimited_quoted_text_row2]
+WITH (
+    FORMAT_TYPE = DELIMITEDTEXT,
+    FORMAT_OPTIONS (
+        FIELD_TERMINATOR = N';',
+        STRING_DELIMITER = N'"',
+        FIRST_ROW = 2,
+        USE_TYPE_DEFAULT = False
+    )
+);
+GO

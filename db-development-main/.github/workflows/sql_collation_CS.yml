@@ -1,0 +1,114 @@
+name: SQL CS Collation Pool Deployment
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "code/sql/**"
+      - "code/sqlmaster/**"
+      - "code/MgmtDbTest/**"
+      - ".github/workflows/sql_collation_CS.yml"
+      - ".github/workflows/actions/database/action.yaml"
+      - ".github/workflows/actions/mgmt-db-test/action.yaml"
+      - ".github/mocks/mock_terraform_outputs-spf-0091-dev.json"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "code/sql/**"
+      - "code/sqlmaster/**"
+      - "code/MgmtDbTest/**"
+      - ".github/workflows/sql_collation_CS.yml"
+      - ".github/workflows/actions/database/action.yaml"
+      - ".github/workflows/actions/mgmt-db-test/action.yaml"
+      - ".github/mocks/mock_terraform_outputs-spf-0091-dev.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: sql-collation-cs-deployment
+  cancel-in-progress: false
+
+jobs:
+  database-hungarian-cs:
+    name: "Database - Hungarian CS Collation"
+    runs-on: [adp]
+    environment: db_dev
+
+    steps:
+      - name: Check Out Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Generate mock Terraform outputs (Hungarian collation)
+        id: prepare_tf_outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mock_outputs=$(jq \
+          '.mgmt_details.value |= (
+              fromjson
+              | .synapse_workspace.sql_pool_collations
+                  |= (with_entries(select(.key != "dpspf009101")))
+              | .synapse_workspace.sql_pool_collations.hungarianCS = "Hungarian_Technical_100_CS_AS"
+              | .synapse_workspace.sql_pool_names = ["hungarianCS"]
+              | tojson
+            )
+          | .mgmt_synapse_workspace_sql_pool_name.value = "hungarianCS"' \
+          .github/mocks/mock_terraform_outputs-spf-0091-dev.json \
+          | jq -c '.')
+
+          echo "module outputs is ${mock_outputs}"
+          echo "terraform_outputs=${mock_outputs}" >> $GITHUB_OUTPUT
+          echo "has_mgmt_sql_pool=true" >> $GITHUB_OUTPUT
+          echo "Mock Terraform outputs generated for Hungarian collation."
+
+      - name: Database
+        uses: ./.github/workflows/actions/database
+        with:
+          target_environment: |
+            {
+              "oe_name": "simplifi",
+              "infra_app_name": "0091",
+              "stage": "dev",
+              "subscriptionId": "dbb4728c-24de-44b6-b877-f8efef8a73de",
+              "deploy": { "mgmt": { "version": "v2" } }
+            }
+          terraform_outputs: ${{ steps.prepare_tf_outputs.outputs.terraform_outputs }}
+          db_development_dir: "."
+          result_caching_enabled: false
+          arm_client_id: ${{ secrets.CLIENT_ID }}
+          arm_client_secret: ${{ secrets.CLIENT_SECRET }}
+          arm_tenant_id: ${{ secrets.TENANT_ID }}
+
+  mgmt-db-test:
+    name: "Deploy and run Mgmt Database Test"
+    runs-on: [adp]
+    environment: db_dev
+    if: |
+      needs.database-hungarian-cs.result == 'success' && !cancelled()
+    needs: [database-hungarian-cs]
+
+    steps:
+      - name: Check Out Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: "Deploy and run Mgmt Database Test"
+        id: mgmt_db_test
+        uses: ./.github/workflows/actions/mgmt-db-test
+        with:
+          oe_name: "simplifi"
+          infra_app_name: "0091"
+          stage: "dev"
+          subscription_id: "dbb4728c-24de-44b6-b877-f8efef8a73de"
+          db_development_dir: "."
+          arm_client_id: ${{ secrets.CLIENT_ID }}
+          arm_client_secret: ${{ secrets.CLIENT_SECRET }}
+          arm_tenant_id: ${{ secrets.TENANT_ID }}
+          mgmt_synapse_workspace_name: "synw-spf-0091-dev-mgmt"
+          sql_pool_name: "hungarianCS"
+          sql_pool_collation: "Hungarian_Technical_100_CS_AS"

@@ -1,0 +1,70 @@
+{
+	"name": "pl_infra_maintenance_truncate_trigger_states",
+	"properties": {
+		"description": "Clears (writes []) the trigger state file for each workspace in the given list. Used when nothing was actually stopped this maintenance cycle (mgmt pool offline at start), to prevent pl_root_infra_maintenance_end from later restarting triggers based on a stale state file left over from an earlier cycle.",
+		"activities": [
+			{
+				"name": "ForEach Workspace",
+				"type": "ForEach",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@pipeline().parameters.workspace_list",
+						"type": "Expression"
+					},
+					"isSequential": false,
+					"batchCount": 5,
+					"activities": [
+						{
+							"name": "Truncate Trigger State File",
+							"type": "WebActivity",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.00:10:00",
+								"retry": 3,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"method": "PUT",
+								"headers": {
+									"x-ms-version": "2017-11-09",
+									"x-ms-blob-type": "BlockBlob"
+								},
+								"url": {
+									"value": "@concat('https://',pipeline().parameters.storage_account,'.blob.core.windows.net/sac-mgmt-main/triggerStateFiles/',split(item().properties.privateLinkResourceId,'/')[8],'_triggers.json')",
+									"type": "Expression"
+								},
+								"connectVia": {
+									"referenceName": "VNetEnabledIntegrationRuntime",
+									"type": "IntegrationRuntimeReference"
+								},
+								"body": "[]",
+								"authentication": {
+									"type": "MSI",
+									"resource": "https://storage.azure.com/"
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"workspace_list": {
+				"type": "array"
+			},
+			"storage_account": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "Maintenance_Start_Activities"
+		},
+		"annotations": []
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

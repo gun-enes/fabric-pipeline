@@ -1,0 +1,184 @@
+{
+	"name": "pl_root_infra_maintenance_end",
+	"properties": {
+		"activities": [
+			{
+				"name": "Iterate over each Workspace",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "activity_if_not_triggered_by_ms_maintenance",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Execute Initialize Variables').output.pipelineReturnValue.synapse_mpe_list",
+						"type": "Expression"
+					},
+					"isSequential": false,
+					"batchCount": 5,
+					"activities": [
+						{
+							"name": "activity_skip_management_workspace",
+							"description": "Management workspace's own triggers are never stopped by pl_check_management_triggers at maintenance start, so skip restarting triggers for it here too. Plain name comparison only - no SQL query against the dedicated pool is involved.",
+							"type": "IfCondition",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@not(equals(pipeline().DataFactory, split(item().properties.privateLinkResourceId,'/')[8]))",
+									"type": "Expression"
+								},
+								"ifTrueActivities": [
+									{
+										"name": "Execute Start Triggers",
+										"type": "ExecutePipeline",
+										"dependsOn": [],
+										"policy": {
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"pipeline": {
+												"referenceName": "pl_infra_maintenance_start_triggers",
+												"type": "PipelineReference"
+											},
+											"waitOnCompletion": true,
+											"parameters": {
+												"workspace_name": {
+													"value": "@split(item().properties.privateLinkResourceId,'/')[8]",
+													"type": "Expression"
+												},
+												"storage_account": {
+													"value": "@activity('Execute Initialize Variables').output.pipelineReturnValue.storage_account",
+													"type": "Expression"
+												}
+											}
+										}
+									}
+								]
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Execute Initialize Variables",
+				"type": "ExecutePipeline",
+				"dependsOn": [],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pl_initialize_variables",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
+				}
+			},
+			{
+				"name": "activity_if_not_triggered_by_ms_maintenance",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "send-notification",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@not(startswith(pipeline().TriggerName, 'trg_ms_maintenance_'))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Execute Resume SQLPools Pipeline",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "pl_infra_maintenance_resume_sqlpools",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"workspace_name": {
+										"value": "@pipeline().DataFactory",
+										"type": "Expression"
+									},
+									"storage_account": {
+										"value": "@activity('Execute Initialize Variables').output.pipelineReturnValue.storage_account",
+										"type": "Expression"
+									},
+									"database_name": {
+										"value": "@pipeline().parameters.database_name",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "send-notification",
+				"type": "AzureFunctionActivity",
+				"dependsOn": [
+					{
+						"activity": "Execute Initialize Variables",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:20:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"functionName": "mntNotification",
+					"body": "@concat('{\"subscriptionId\":\"',activity('Execute Initialize Variables').output.pipelineReturnValue.subscription,'\",\"maintenance_status\":\"end\",\"workspaceName\":\"',pipeline().DataFactory,'\"}')",
+					"method": "POST"
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureFunctionMnt",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"parameters": {
+			"database_name": {
+				"type": "string",
+				"defaultValue": "dpspf009101"
+			}
+		},
+		"variables": {
+			"trigger_list": {
+				"type": "Array"
+			}
+		},
+		"folder": {
+			"name": "Maintenance_End_Activities"
+		},
+		"annotations": [],
+		"lastPublishTime": "2024-07-29T10:40:46Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

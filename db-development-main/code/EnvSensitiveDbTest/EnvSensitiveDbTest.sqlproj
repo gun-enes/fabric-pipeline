@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build">
+  <Sdk Name="Microsoft.Build.Sql" Version="2.0.0" />
+  <PropertyGroup>
+    <Name>MgmtDbTest</Name>
+    <ProjectGuid>{613E988E-572D-44FB-97B1-25E15F299674}</ProjectGuid>
+    <DSP>Microsoft.Data.Tools.Schema.Sql.SqlDwDatabaseSchemaProvider</DSP>
+    <ModelCollation>1033, CI</ModelCollation>
+  </PropertyGroup>
+  <PropertyGroup>
+    <SuppressTSqlWarnings>71502</SuppressTSqlWarnings>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SqlServer.Dacpacs.Synapse.Master">
+      <Version>130.2.2</Version>
+      <GeneratePathProperty>True</GeneratePathProperty>
+      <DatabaseVariableLiteralValue>master</DatabaseVariableLiteralValue>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\sql\sqlDbProject.sqlproj">
+      <SuppressMissingDependenciesErrors>False</SuppressMissingDependenciesErrors>
+      <Private>True</Private>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Security\Schemas" />
+    <Folder Include="Security\Tables" />
+    <Folder Include="UnitTests\StoredProcedures" />
+  </ItemGroup>
+  <ItemGroup>
+    <PostDeploy Include="PostDeployment\Script.PostDeployment1.sql" />
+     <None Include="PostDeployment\Script.RunTestCETAS.sql" />
+     <None Include="PostDeployment\Script.TestSetupDecom.sql" />
+     <None Include="PostDeployment\Script.RunTestDecom.sql" />
+     <None Include="PostDeployment\Script.TestSummary.sql" />
+  </ItemGroup>
+  <Target Name="BeforeBuild">
+    <Delete Files="$(BaseIntermediateOutputPath)\project.assets.json" />
+  </Target>
+  <PropertyGroup>
+    <TreatTSqlWarningsAsErrors>True</TreatTSqlWarningsAsErrors>
+  </PropertyGroup>
+</Project>

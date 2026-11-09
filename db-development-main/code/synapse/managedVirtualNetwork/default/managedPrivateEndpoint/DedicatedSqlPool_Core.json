@@ -1,0 +1,10 @@
+{
+  "name": "DedicatedSqlPool_Core",
+  "properties": {
+    "privateLinkResourceId": "/subscriptions/dbb4728c-24de-44b6-b877-f8efef8a73de/resourceGroups/rg-spf-0091-dev-cr/providers/Microsoft.Synapse/workspaces/synw-spf-0091-dev-cr",
+    "groupId": "Sql",
+    "fqdns": [
+      "synw-spf-0091-dev-cr.sql.azuresynapse.net"
+    ]
+  }
+}

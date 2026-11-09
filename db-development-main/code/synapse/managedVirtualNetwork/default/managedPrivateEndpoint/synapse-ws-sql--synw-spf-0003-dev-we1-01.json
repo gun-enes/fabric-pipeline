@@ -1,0 +1,10 @@
+{
+  "name": "synapse-ws-sql--synw-spf-0003-dev-we1-01",
+  "properties": {
+    "privateLinkResourceId": "/subscriptions/f0b52967-ba69-469d-a9c3-06bc81662230/resourceGroups/rg-spf-0003-dev-we1-01-syn/providers/Microsoft.Synapse/workspaces/synw-spf-0003-dev-we1-01",
+    "groupId": "sql",
+    "fqdns": [
+      "synw-spf-0003-dev-we1-01.1fd2a5e5-28a3-41fc-bfef-e995f7d1b6dc.sql.azuresynapse.net"
+    ]
+  }
+}

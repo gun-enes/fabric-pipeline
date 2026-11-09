@@ -1,0 +1,12 @@
+{
+  "name": "KeyVault001",
+  "type": "Microsoft.Synapse/workspaces/linkedservices",
+  "properties": {
+    "description": "Default Azure Key Vault.",
+    "annotations": [],
+    "type": "AzureKeyVault",
+    "typeProperties": {
+      "baseUrl": "https://kv-spf-0091-dev-mgmt.vault.azure.net/"
+    }
+  }
+}

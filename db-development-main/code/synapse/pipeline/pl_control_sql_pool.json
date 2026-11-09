@@ -1,0 +1,203 @@
+{
+	"name": "pl_control_sql_pool",
+	"properties": {
+		"activities": [
+			{
+				"name": "Until",
+				"type": "Until",
+				"dependsOn": [
+					{
+						"activity": "check if resume or pause",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(toLower(pipeline().parameters.target_state), toLower(variables('pool_status')))",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "pl_check_sql_pool_status",
+							"type": "ExecutePipeline",
+							"dependsOn": [
+								{
+									"activity": "control-sql-pool",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "pl_check_sql_pool_status",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"workspace_name": {
+										"value": "@pipeline().parameters.workspace_name",
+										"type": "Expression"
+									},
+									"sqlPool_name": {
+										"value": "@pipeline().parameters.sqlPool_name",
+										"type": "Expression"
+									},
+									"expected_state": {
+										"value": "@pipeline().parameters.target_state",
+										"type": "Expression"
+									}
+								}
+							}
+						},
+						{
+							"name": "set pool status",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "pl_check_sql_pool_status",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "pool_status",
+								"value": {
+									"value": "@activity('pl_check_sql_pool_status').output.pipelineReturnValue.pool_status",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "control-sql-pool",
+							"type": "AzureFunctionActivity",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.00:20:00",
+								"retry": 3,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"functionName": "mntTrigger",
+								"body": "@concat('{\n  \"api_data\": {\n    \"subscriptionId\": \"',pipeline().parameters.subscriptionId,'\",\n    \"resourceGroup\": \"',pipeline().parameters.resourceGroup,'\",\n    \"workspaceName\": \"',pipeline().parameters.workspace_name,'\",\n    \"sqlPoolName\": \"',pipeline().parameters.sqlPool_name,'\",\n    \"actionType\": \"',variables('api_control_action'),'\"\n  }\n}')",
+								"method": "POST"
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureFunctionMnt",
+								"type": "LinkedServiceReference"
+							}
+						}
+					],
+					"timeout": "0.02:00:00"
+				}
+			},
+			{
+				"name": "check if resume or pause",
+				"type": "IfCondition",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(toLower(pipeline().parameters.target_state), 'online')",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "Set action to pause",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "api_control_action",
+								"value": "pause"
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "Set action to resume",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "api_control_action",
+								"value": "resume"
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"workspace_name": {
+				"type": "string",
+				"defaultValue": "synw-tdp-e2e001-dev-mgmt"
+			},
+			"sqlPool_name": {
+				"type": "string",
+				"defaultValue": "sqlPool001"
+			},
+			"resourceGroup": {
+				"type": "string",
+				"defaultValue": "rg-tdp-e2e001-dev-mgmt"
+			},
+			"subscriptionId": {
+				"type": "string",
+				"defaultValue": "827f04e2-b0fa-4d07-ae8c-cd12bf5e74a2"
+			},
+			"target_state": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"counter": {
+				"type": "Integer",
+				"defaultValue": 0
+			},
+			"max_iterations": {
+				"type": "Integer",
+				"defaultValue": 3
+			},
+			"temp": {
+				"type": "Integer"
+			},
+			"pool_status": {
+				"type": "String",
+				"defaultValue": "Unknown"
+			},
+			"api_control_action": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "Maintenance_End_Activities"
+		},
+		"annotations": [],
+		"lastPublishTime": "2025-04-15T14:11:56Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

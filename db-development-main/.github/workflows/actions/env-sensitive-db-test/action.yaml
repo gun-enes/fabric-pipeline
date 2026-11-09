@@ -1,0 +1,216 @@
+name: 'Database Tests (EnvSensitiveDbTest)'
+description: 'Build, Deploy and Run EnvSensitiveDbTest Database Project'
+
+inputs:
+  oe_name:
+    required: true
+    type: string
+  infra_app_name:
+    required: true
+    type: string
+  stage:
+    required: true
+    type: string
+  mgmt_synapse_workspace_name:
+    required: true
+    type: string
+  sql_pool_name:
+    required: true
+    type: string
+  db_development_dir:
+    required: true
+    type: string
+  subscription_id:
+    required: true
+    type: string
+  arm_client_id:
+    required: true
+  arm_client_secret:
+    required: true
+  arm_tenant_id:
+    required: true
+
+outputs:
+  artifact_path:
+    description: 'Artifact path for the test results'
+    value: ${{ steps.extract_results.outputs.testResultsFile }}
+
+runs:
+  using: "composite"
+  steps:
+
+  - name: Prep environment
+    id: prep_environment
+    shell: bash
+    env:
+      TARGET_OE_NAME: ${{ inputs.oe_name }}
+      TARGET_INFRA_APP_NAME: ${{ inputs.infra_app_name }}
+      TARGET_STAGE: ${{ inputs.stage }}
+      ARM_SUBSCRIPTION_ID: ${{ inputs.subscription_id }}
+      ARM_CLIENT_ID: ${{ inputs.arm_client_id }}
+      ARM_TENANT_ID: ${{ inputs.arm_tenant_id }}
+      TMP_WORKDIR: ${{ github.workspace }}/tmp
+      MGMT_SYNW_SQLPOOL_URI: ${{ inputs.mgmt_synapse_workspace_name }}.sql.azuresynapse.net
+      MGMT_SYNW_SQLPOOL_NAME: ${{ inputs.sql_pool_name }}
+    run: |
+      set -euo pipefail
+      mkdir -p "${TMP_WORKDIR}"
+
+      # Function to safely set environment variables with heredoc delimiters
+      set_env_var() {
+        local var_name="$1"
+        local var_value="$2"
+        local delimiter
+        delimiter="$(openssl rand -hex 8)"
+        {
+          echo "${var_name}<<${delimiter}"
+          echo "${var_value}"
+          echo "${delimiter}"
+        } >> $GITHUB_ENV
+      }
+
+      set_env_var "TMP_WORKDIR" "${TMP_WORKDIR}"
+      set_env_var "ARM_SUBSCRIPTION_ID" "${ARM_SUBSCRIPTION_ID}"
+      set_env_var "ARM_CLIENT_ID" "${ARM_CLIENT_ID}"
+      set_env_var "ARM_TENANT_ID" "${ARM_TENANT_ID}"
+      set_env_var "TARGET_OE_NAME" "${TARGET_OE_NAME}"
+      set_env_var "TARGET_INFRA_APP_NAME" "${TARGET_INFRA_APP_NAME}"
+      set_env_var "TARGET_STAGE" "${TARGET_STAGE}"
+      set_env_var "MGMT_SYNW_SQLPOOL_URI" "${MGMT_SYNW_SQLPOOL_URI}"
+      set_env_var "MGMT_SYNW_SQLPOOL_NAME" "${MGMT_SYNW_SQLPOOL_NAME}"
+
+  - name: Build project model
+    id: build_project
+    working-directory: ${{ inputs.db_development_dir }}/code/EnvSensitiveDbTest
+    shell: bash
+    run: |
+      set -euo pipefail
+      build_output_dir=${TMP_WORKDIR}/EnvSensitiveDbTest-project-${TARGET_OE_NAME}-${TARGET_INFRA_APP_NAME}-${TARGET_STAGE}
+      mkdir -p ${build_output_dir}
+      echo "Building project EnvSensitiveDbTest"
+      /usr/bin/dotnet build /p:NetCoreBuild=true \
+      --configuration Release \
+      --output "${build_output_dir}"
+      echo "output_dir=${build_output_dir}" >> "$GITHUB_OUTPUT"
+
+  - name: Azure Login
+    id: az_login
+    shell: bash
+    working-directory: ./
+    env:
+      ARM_CLIENT_SECRET: ${{ inputs.arm_client_secret }}
+    run: |
+      set -euo pipefail
+      az login --service-principal \
+      --username "${ARM_CLIENT_ID}" \
+      --password "${ARM_CLIENT_SECRET}" \
+      --tenant "${ARM_TENANT_ID}" \
+      --output none
+      az account set \
+      --subscription ${ARM_SUBSCRIPTION_ID} \
+      --output none
+
+  - name: SQL Package Deployment and Run Tests
+    id: sqlpackage_deployment
+    working-directory: ./
+    shell: bash
+    env:
+      MGMT_SYNW_SQLPOOL_URI: ${{ inputs.mgmt_synapse_workspace_name }}.sql.azuresynapse.net
+      MGMT_SYNW_SQLPOOL_NAME: ${{ inputs.sql_pool_name }}
+      PROJECT_BUILD_OUTPUT_DIR: ${{ steps.build_project.outputs.output_dir }}
+      ARM_CLIENT_ID: ${{ inputs.arm_client_id }}
+      ARM_CLIENT_SECRET: ${{ inputs.arm_client_secret }}
+    run: |
+      SQL_CONNECTION_STRING="Server=tcp:${MGMT_SYNW_SQLPOOL_URI},1433;Initial Catalog=${MGMT_SYNW_SQLPOOL_NAME};Encrypt=True;Authentication=Active Directory Service Principal;User Id=${ARM_CLIENT_ID}; Password=${ARM_CLIENT_SECRET}"
+      ~/sqlpackage/sqlpackage \
+        /Action:Publish \
+        /SourceFile:"${PROJECT_BUILD_OUTPUT_DIR}/EnvSensitiveDbTest.dacpac" \
+        /TargetConnectionString:"${SQL_CONNECTION_STRING}" \
+        /Diagnostics:true \
+        /p:VerifyCollationCompatibility=true \
+        /p:VerifyDeployment=true \
+        /p:BlockOnPossibleDataLoss=true \
+        /p:DropObjectsNotInSource=false \
+        /p:CommandTimeout=3600 \
+        2>&1 | tee test_results.txt
+
+  - name: Upload Test Results
+    id: extract_results
+    if: always() && steps.sqlpackage_deployment.result != 'skipped'
+    shell: bash
+    env:
+      GITHUB_REPOSITORY: ${{ github.repository }}
+      GITHUB_RUN_ID: ${{ github.run_id }}
+      GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+    run: |
+        RUN_URL="https://github.developer.allianz.io/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/attempts/${GITHUB_RUN_ATTEMPT}"
+
+        full_log="test_results.txt"
+        timestamp=$(date +%H.%M.%S)
+        result_file_base="test-result-${timestamp}"
+
+        marker="---------------------------------------------"
+        start_text="Starting environment sensitive DB test..."
+        end_text="Environment Sensitive DB Test is completed..."
+
+        # Ensure both markers exist in the log
+        if grep -q "${start_text}" "$full_log" && grep -q "${end_text}" "$full_log"; then
+            awk -v sm="$marker" -v st="$start_text" -v em="$marker" -v et="$end_text" '
+                $0 == sm { getline; if ($0 == st) { print sm; print $0; flag=1; next } }
+                flag {
+                print
+                if ($0 == em) {
+                    getline
+                    if ($0 == et) { print em; print $0; flag=0 }
+                }
+                }
+            ' "$full_log" > "${result_file_base}.txt"
+
+            echo "Extracted logs between 'Starting environment sensitive DB test...' and 'Environment Sensitive DB Test is completed...' into ${result_file_base}.txt"
+        else
+            echo "One or both markers not found, saving full log instead"
+            cp "$full_log" "${result_file_base}.txt"
+        fi
+
+        # Determine test result: pass or fail
+        if grep -q ", 0 failed, 0 errored." "${result_file_base}.txt"; then
+            status="pass"
+        else
+            status="fail"
+        fi
+
+        # Rename file with status suffix
+        result_file_name="${result_file_base}-${status}.txt"
+        mv "${result_file_base}.txt" "${result_file_name}"
+
+        # Add GitHub Run URL to top of file
+        echo "RUN URL: ${RUN_URL}" | cat - "${result_file_name}" > temp && mv temp "${result_file_name}"
+
+        # Output result file path
+        echo "testResultsFile=${result_file_name}" >> $GITHUB_OUTPUT
+        echo "Test results saved to ${result_file_name}"
+
+  - name: Upload Test Results
+    if: always() && steps.extract_results.outputs.testResultsFile != ''
+    uses: actions/upload-artifact@c6a366c94c3e0affe28c06c8df20a878f24da3cf # v3.2.2
+    with:
+      name: ${{ steps.extract_results.outputs.testResultsFile }}
+      path: ./${{ steps.extract_results.outputs.testResultsFile }}
+
+  - name: Cleanup EnvSensitiveDbTest
+    id: cleanup_envSensitiveDbTest
+    if: always()
+    env:
+      MGMT_SYNW_SQLPOOL_URI: ${{ inputs.mgmt_synapse_workspace_name }}.sql.azuresynapse.net
+      MGMT_SYNW_SQLPOOL_NAME: ${{ inputs.sql_pool_name }}
+      ARM_CLIENT_ID: ${{ inputs.arm_client_id }}
+      ARM_CLIENT_SECRET: ${{ inputs.arm_client_secret }}
+    run: |
+      echo "run EnvSensitiveDbTest cleanup script"
+      $SQL_CONNECTION_STRING = "Server=tcp:$($env:MGMT_SYNW_SQLPOOL_URI),1433;Initial Catalog=$($env:MGMT_SYNW_SQLPOOL_NAME);Encrypt=True;Authentication=Active Directory Service Principal;User Id=$($env:ARM_CLIENT_ID); Password=$($env:ARM_CLIENT_SECRET)"
+      Invoke-Sqlcmd `
+        -ConnectionString $SQL_CONNECTION_STRING `
+        -InputFile "cleanup_envSensitiveDbTest.sql" `
+        -Verbose
+    working-directory: ${{ inputs.db_development_dir }}/code/scripts
+    shell: pwsh

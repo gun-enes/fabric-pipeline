@@ -1,0 +1,132 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "mgmtWorkspaceName": {
+      "value": "${secondary_mgmt_synapse_workspace_name}"
+    },
+    "coreWorkspaceName": {
+      "value": "${secondary_core_synapse_workspace_name}"
+    },
+    "extWorkspaceName": {
+      "value": "${secondary_extension_synapse_workspace_name}"
+    },
+    "curatedStoragePrivateLinkResourceId": {
+      "value": "${primary_mgmt_storage_account_curated_account_id}"
+    },
+    "externalStoragePrivateLinkResourceId": {
+      "value": "${primary_mgmt_storage_account_external_account_id}"
+    },
+    "workspaceStoragePrivateLinkResourceId": {
+      "value": "${primary_mgmt_storage_account_workspace_account_id}"
+    },
+    "rawStoragePrivateLinkResourceId": {
+      "value": "${primary_mgmt_storage_account_raw_account_id}"
+    },
+    "spfExternalStoragePrivateLinkResourceId": {
+      "value": "${secondary_mgmt_storage_account_external_account_id}"
+    },
+    "spfWorkspaceStoragePrivateLinkResourceId": {
+      "value": "${secondary_mgmt_storage_account_workspace_account_id}"
+    },
+    "spfRawStoragePrivateLinkResourceId": {
+      "value": "${secondary_mgmt_storage_account_raw_account_id}"
+    },
+    "curatedStorageDfsEndpointUri": {
+      "value": "https://${primary_mgmt_storage_account_curated_name}.dfs.core.windows.net"
+    },
+    "externalStorageDfsEndpointUri": {
+      "value": "https://${primary_mgmt_storage_account_external_name}.dfs.core.windows.net"
+    },
+    "workspaceStorageDfsEndpointUri": {
+      "value": "https://${primary_mgmt_storage_account_workspace_name}.dfs.core.windows.net"
+    },
+    "rawStorageDfsEndpointUri": {
+      "value": "https://${primary_mgmt_storage_account_raw_name}.dfs.core.windows.net"
+    },
+    "spfExternalStorageDfsEndpointUri": {
+      "value": "https://${secondary_mgmt_storage_account_external_name}.dfs.core.windows.net"
+    },
+    "spfWorkspaceStorageDfsEndpointUri": {
+      "value": "https://${secondary_mgmt_storage_account_workspace_name}.dfs.core.windows.net"
+    },
+    "spfRawStorageDfsEndpointUri": {
+      "value": "https://${secondary_mgmt_storage_account_raw_name}.dfs.core.windows.net"
+    },
+    "mgmtKeyVaultPrivateLinkResourceId": {
+      "value": "/subscriptions/${primary_mgmt_subscription_id}/resourceGroups/${primary_mgmt_resource_group_name}/providers/Microsoft.KeyVault/vaults/${primary_mgmt_key_vault_name}"
+    },
+    "mgmtKeyVaultFqdns": {
+      "value": "https://${primary_mgmt_key_vault_name}.vault.azure.net/"
+    },
+    "mgmtSynapseDevFqdns": {
+      "value": "${secondary_mgmt_synapse_workspace_name}.dev.azuresynapse.net"
+    },
+    "mgmtSynapseSqlFqdns": {
+      "value": "${secondary_mgmt_synapse_workspace_name}.sql.azuresynapse.net"
+    },
+    "mgmtSynapsePrivateLinkResourceId": {
+      "value": "/subscriptions/${secondary_mgmt_subscription_id}/resourceGroups/${secondary_mgmt_resource_group_name}/providers/Microsoft.Synapse/workspaces/${secondary_mgmt_synapse_workspace_name}"
+    },
+    "mgmtMplsResourceId": {
+      "value": "${secondary_mgmt_logging_mpls_resource_id}"
+    },
+    "mgmtMaintenanceFunctionResourceId": {
+      "value": "${secondary_mgmt_maintenance_synapse_maintenance_function_resource_id}"
+    },
+    "coreKeyVaultPrivateLinkResourceId": {
+      "value": "/subscriptions/${primary_mgmt_subscription_id}/resourceGroups/${primary_core_resource_group_name}/providers/Microsoft.KeyVault/vaults/${primary_core_key_vault_name}"
+    },
+    "coreSynapseDevFqdns": {
+      "value": "${secondary_core_synapse_workspace_name}.dev.azuresynapse.net"
+    },
+    "coreSynapsePrivateLinkResourceId": {
+      "value": "/subscriptions/${secondary_mgmt_subscription_id}/resourceGroups/${secondary_core_resource_group_name}/providers/Microsoft.Synapse/workspaces/${secondary_core_synapse_workspace_name}"
+    },
+    "coreKeyVaultFqdns": {
+      "value": "https://${primary_core_key_vault_name}.vault.azure.net/"
+    },
+    "coreMplsResourceId": {
+      "value": "${secondary_core_logging_mpls_resource_id}"
+    },
+    "coreDynFunctionAppUrl": {
+      "value": "https://${secondary_core_dynatrace_function_name}.azurewebsites.net"
+    },
+    "coreDynFunctionResourceId": {
+      "value": "${secondary_core_dynatrace_function_resource_id}"
+    },
+    "extKeyVaultPrivateLinkResourceId": {
+      "value": "/subscriptions/${primary_mgmt_subscription_id}/resourceGroups/${primary_extension_resource_group_name}/providers/Microsoft.KeyVault/vaults/${primary_extension_key_vault_name}"
+    },
+    "extKeyVaultFqdns": {
+      "value": "https://${primary_extension_key_vault_name}.vault.azure.net/"
+    },
+    "extSynapseDevFqdns": {
+      "value": "${secondary_extension_synapse_workspace_name}.dev.azuresynapse.net"
+    },
+    "extSynapsePrivateLinkResourceId": {
+      "value": "/subscriptions/${secondary_mgmt_subscription_id}/resourceGroups/${secondary_extension_resource_group_name}/providers/Microsoft.Synapse/workspaces/${secondary_extension_synapse_workspace_name}"
+    },
+    "extMplsResourceId": {
+      "value": "${secondary_extension_logging_mpls_resource_id}"
+    },
+    "extDynFunctionAppUrl": {
+      "value": "https://${secondary_extension_dynatrace_function_name}.azurewebsites.net"
+    },
+    "extDynFunctionResourceId": {
+      "value": "${secondary_extension_dynatrace_function_resource_id}"
+    },
+    "dedicatedSqlPoolConnectionString": {
+      "value": "Integrated Security=False;Encrypt=True;Connection Timeout=300;Data Source=${secondary_mgmt_synapse_workspace_name}.sql.azuresynapse.net;Initial Catalog=@{linkedService().DBName}"
+    },
+    "restoredDatabaseName": {
+      "value": "${secondary_mgmt_restored_db_name}"
+    },
+    "VNetEnabledIntegrationRuntimeRegion": {
+      "value": "${secondary_mgmt_vnet_enabled_integration_runtime_region}"
+    },
+    "SqlServerless001ConnectionString": {
+      "value": "Integrated Security=False;Encrypt=True;Connection Timeout=300;Data Source=${secondary_mgmt_synapse_workspace_name}-ondemand.sql.azuresynapse.net;Initial Catalog=@{linkedService().DBName}"
+    }
+  }
+}

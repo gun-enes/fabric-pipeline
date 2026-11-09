@@ -1,0 +1,40 @@
+{
+  "value": [
+    {
+      "name": "DefaultReader",
+      "id": "6aa3bf91-673f-4d4e-b648-7ae0c52bc223",
+      "etag": "\"RGVmYXVsdFJlYWRlcg==\"",
+      "kind": "Policy",
+      "decisionRules": [
+        {
+          "effect": "Permit",
+          "permission": [
+            {
+              "attributeName": "Action",
+              "attributeValueIncludedIn": [
+                "Read"
+              ]
+            },
+            {
+              "attributeName": "Path",
+              "attributeValueIncludedIn": [
+                "*"
+              ]
+            }
+          ]
+        }
+      ],
+      "members": {
+        "fabricItemMembers": [
+          {
+            "sourcePath": "44397381-b694-4db9-af35-23f34b59e78e/7aeef6bd-b8f0-49b5-a216-5bd281cc7993",
+            "itemAccess": [
+              "ReadAll"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "count": 1
+}

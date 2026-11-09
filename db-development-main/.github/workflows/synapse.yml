@@ -1,0 +1,62 @@
+name: Synapse Deployment
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "code/synapse/**"
+      - ".github/workflows/synapse.yml"
+      - ".github/workflows/actions/synapse/action.yaml"
+      - ".github/mocks/mock_terraform_outputs-spf-0091-dev.json"
+
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "code/synapse/**"
+      - ".github/workflows/synapse.yml"
+      - ".github/workflows/actions/synapse/action.yaml"
+      - ".github/mocks/mock_terraform_outputs-spf-0091-dev.json"
+
+permissions:
+  contents: read
+
+jobs:
+  synapse-dev:
+    name: "Synapse - Dev"
+    runs-on: [adp]
+    environment: db_dev
+
+    steps:
+      - name: Check Out Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Generate mock Terraform outputs
+        id: prepare_tf_outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mock_outputs=$(jq -c . .github/mocks/mock_terraform_outputs-spf-0091-dev.json)
+
+          echo "module outputs is ${mock_outputs}"
+          echo "terraform_outputs=${mock_outputs}" >> $GITHUB_OUTPUT
+          echo "has_mgmt_sql_pool=true" >> $GITHUB_OUTPUT
+          echo "Mock Terraform outputs generated."
+
+      - name: Synapse
+        uses: ./.github/workflows/actions/synapse
+        with:
+          target_environment: |
+            {
+              "oe_name": "simplifi",
+              "infra_app_name": "0091",
+              "stage": "dev",
+              "subscriptionId": "dbb4728c-24de-44b6-b877-f8efef8a73de",
+              "deploy": { "mgmt": { "version": "v1" } }
+            }
+          terraform_outputs: ${{ steps.prepare_tf_outputs.outputs.terraform_outputs }}
+          db_development_dir: "."
+          arm_tenant_id: ${{ secrets.TENANT_ID }}
+          arm_client_id: ${{ secrets.CLIENT_ID }}
+          arm_client_secret: ${{ secrets.CLIENT_SECRET }}

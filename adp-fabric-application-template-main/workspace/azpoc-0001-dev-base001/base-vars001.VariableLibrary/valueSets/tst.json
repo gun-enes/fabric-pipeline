@@ -1,0 +1,10 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/variableLibrary/definition/valueSet/1.0.0/schema.json",
+  "name": "tst",
+  "variableOverrides": [
+    {
+      "name": "basevar001",
+      "value": "zzz"
+    }
+  ]
+}

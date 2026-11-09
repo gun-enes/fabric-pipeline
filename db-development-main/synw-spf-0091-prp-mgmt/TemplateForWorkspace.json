@@ -1,0 +1,2314 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "workspaceName": {
+      "type": "string",
+      "metadata": "Workspace name",
+      "defaultValue": "synw-spf-0091-prp-mgmt"
+    },
+    "DedicatedForBackup_connectionString": {
+      "type": "secureString",
+      "metadata": "Secure string for 'connectionString' of 'DedicatedForBackup'",
+      "defaultValue": "Integrated Security=False;Encrypt=True;Connection Timeout=300;Data Source=tcp:synw-spf-0091-prp-mgmt.sql.azuresynapse.net,1433;Initial Catalog=dpspf009101"
+    },
+    "SqlServerless001_connectionString": {
+      "type": "secureString",
+      "metadata": "Secure string for 'connectionString' of 'SqlServerless001'",
+      "defaultValue": "Integrated Security=False;Encrypt=True;Connection Timeout=300;Data Source=synw-spf-0091-prp-mgmt-ondemand.sql.azuresynapse.net;Initial Catalog=@{linkedService().DBName}"
+    },
+    "synw-spf-0091-prp-mgmt-WorkspaceDefaultSqlServer_connectionString": {
+      "type": "secureString",
+      "metadata": "Secure string for 'connectionString' of 'synw-spf-0091-prp-mgmt-WorkspaceDefaultSqlServer'",
+      "defaultValue": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=tcp:synw-spf-0091-prp-mgmt.sql.azuresynapse.net,1433;Initial Catalog=@{linkedService().DBName}"
+    },
+    "BackupAllTables_grpDivision_1group_bckWithHeaders_properties_parameters_database_name_databaseName": {
+      "type": "string",
+      "defaultValue": "dpspf009101"
+    },
+    "BackupAllTables_grpDivision_1group_sequential_bck_properties_parameters_database_name_databaseName": {
+      "type": "string",
+      "defaultValue": "dpspf009101"
+    },
+    "BackupAllTables_grpDivision_2groups_bckWithHeaders_properties_parameters_database_name_databaseName": {
+      "type": "string",
+      "defaultValue": "dpspf009101"
+    },
+    "BackupAllTables_grpDivision_2groups_sequential_bck_properties_parameters_database_name_databaseName": {
+      "type": "string",
+      "defaultValue": "dpspf009101"
+    },
+    "BackupAllTables_grpDivision_4groups_bckWithHeaders_properties_parameters_database_name_databaseName": {
+      "type": "string",
+      "defaultValue": "dpspf009101"
+    },
+    "BackupAllTables_grpDivision_4groups_sequential_bck_properties_parameters_database_name_databaseName": {
+      "type": "string",
+      "defaultValue": "dpspf009101"
+    },
+    "RestoreAllTables_grpDivision_1group_Restore_properties_parameters_database_name_databaseName": {
+      "type": "string",
+      "defaultValue": "dpspf009101"
+    },
+    "infra_db_stats_properties_parameters_database_name_databaseName": {
+      "type": "string",
+      "defaultValue": "dpspf009101"
+    },
+    "infra_table_dist_report_properties_parameters_database_name_databaseName": {
+      "type": "string",
+      "defaultValue": "dpspf009101"
+    },
+    "pl_permission_audit_properties_parameters_database_name_databaseName": {
+      "type": "string",
+      "defaultValue": "dpspf009101"
+    },
+    "DataLakeCurated_properties_typeProperties_dfsEndpointUri": {
+      "type": "string",
+      "defaultValue": "https://stspf1234devcur.dfs.core.windows.net/"
+    },
+    "DedicatedForBackup_properties_typeProperties_connectionString": {
+      "type": "string",
+      "defaultValue": "Integrated Security=False;Encrypt=True;Connection Timeout=300;Data Source=tcp:synw-spf-0091-prp-mgmt.sql.azuresynapse.net,1433;Initial Catalog=dpspf009101"
+    },
+    "KeyVault001_properties_typeProperties_azureKeyVaultBaseUrl": {
+      "type": "string",
+      "defaultValue": "https://kv-spf-0091-prp-mgmt.vault.azure.net/"
+    },
+    "SqlServerless001_properties_typeProperties_connectionString": {
+      "type": "string",
+      "defaultValue": "Integrated Security=False;Encrypt=True;Connection Timeout=300;Data Source=synw-spf-0091-prp-mgmt-ondemand.sql.azuresynapse.net;Initial Catalog=@{linkedService().DBName}"
+    },
+    "synw-spf-0091-prp-mgmt-WorkspaceDefaultSqlServer_properties_typeProperties_connectionString": {
+      "type": "string",
+      "defaultValue": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=tcp:synw-spf-0091-prp-mgmt.sql.azuresynapse.net,1433;Initial Catalog=@{linkedService().DBName}"
+    },
+    "synw-spf-0091-prp-mgmt-WorkspaceDefaultStorage_properties_typeProperties_dfsEndpointUri": {
+      "type": "string",
+      "defaultValue": "https://stspf0091devwks.dfs.core.windows.net"
+    },
+    "AutoResolveIntegrationRuntime_properties_typeProperties_computeProperties_region": {
+      "type": "string",
+      "defaultValue": "AutoResolve"
+    },
+    "VNetEnabledIntegrationRuntime_properties_typeProperties_computeProperties_region": {
+      "type": "string",
+      "defaultValue": "West Europe"
+    }
+  },
+  "variables": {
+    "workspaceId": "[concat('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]"
+  },
+  "resources": [
+    {
+      "name": "[concat(parameters('workspaceName'), '/BackupAllTables_grpDivision_1group_bckWithHeaders')]",
+      "type": "Microsoft.Synapse/workspaces/pipelines",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "activities": [
+          {
+            "name": "LookupTables",
+            "description": "Get all tables for all schemas - list for export",
+            "type": "Lookup",
+            "dependsOn": [],
+            "policy": {
+              "timeout": "0.12:00:00",
+              "retry": 0,
+              "retryIntervalInSeconds": 30,
+              "secureOutput": false,
+              "secureInput": false
+            },
+            "userProperties": [],
+            "typeProperties": {
+              "source": {
+                "type": "SqlDWSource",
+                "sqlReaderQuery": {
+                  "value": "SELECT \n'[' + SCHEMA_NAME(t.schema_id) + '].[' + t.name + ']' as 'table_plus_schema'\n, SCHEMA_NAME(t.schema_id) as 'table_schema'\n, t.name as 'table_name'\n, '' + SCHEMA_NAME(t.schema_id) + '.' + t.name + '_' + '@{pipeline().parameters.files_postfix}' + '.bck'  as fileName\n,ntile(4) over (order by newid()) as grp\n  FROM sys.tables t \nLEFT JOIN sys.external_tables e\non t.object_id = e.object_id\nwhere e.type is NULL",
+                  "type": "Expression"
+                },
+                "queryTimeout": "00:06:00",
+                "partitionOption": "None"
+              },
+              "dataset": {
+                "referenceName": "bckSourceDataSet",
+                "type": "DatasetReference",
+                "parameters": {
+                  "dbName": {
+                    "value": "@pipeline().parameters.database_name",
+                    "type": "Expression"
+                  },
+                  "cw_schema": "NULL",
+                  "cw_table": "NULL"
+                }
+              },
+              "firstRowOnly": false
+            }
+          },
+          {
+            "name": "ForEach_Table_PerformBackup",
+            "type": "ForEach",
+            "dependsOn": [
+              {
+                "activity": "LookupTables",
+                "dependencyConditions": [
+                  "Succeeded"
+                ]
+              }
+            ],
+            "userProperties": [],
+            "typeProperties": {
+              "items": {
+                "value": "@activity('LookupTables').output.value",
+                "type": "Expression"
+              },
+              "activities": [
+                {
+                  "name": "Copy_Table_To_File",
+                  "type": "Copy",
+                  "dependsOn": [],
+                  "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                  },
+                  "userProperties": [
+                    {
+                      "name": "Source",
+                      "value": "@{item().TABLE_SCHEMA}.@{item().TABLE_NAME}"
+                    },
+                    {
+                      "name": "Destination",
+                      "value": "sac-mgmt-main//mkbackup//@{item().fileName}"
+                    }
+                  ],
+                  "typeProperties": {
+                    "source": {
+                      "type": "SqlDWSource",
+                      "queryTimeout": "02:00:00",
+                      "partitionOption": "None"
+                    },
+                    "sink": {
+                      "type": "DelimitedTextSink",
+                      "storeSettings": {
+                        "type": "AzureBlobFSWriteSettings"
+                      },
+                      "formatSettings": {
+                        "type": "DelimitedTextWriteSettings",
+                        "quoteAllText": true,
+                        "fileExtension": ".txt"
+                      }
+                    },
+                    "enableStaging": false,
+                    "translator": {
+                      "type": "TabularTranslator",
+                      "typeConversion": true,
+                      "typeConversionSettings": {
+                        "allowDataTruncation": true,
+                        "treatBooleanAsNumber": false
+                      }
+                    }
+                  },
+                  "inputs": [
+                    {
+                      "referenceName": "bckSourceDataSet",
+                      "type": "DatasetReference",
+                      "parameters": {
+                        "dbName": {
+                          "value": "@pipeline().parameters.database_name",
+                          "type": "Expression"
+                        },
+                        "cw_schema": {
+                          "value": "@item().TABLE_SCHEMA",
+                          "type": "Expression"
+                        },
+                        "cw_table": {
+                          "value": "@item().TABLE_NAME",
+                          "type": "Expression"
+                        }
+                      }
+                    }
+                  ],
+                  "outputs": [
+                    {
+                      "referenceName": "BackupContainer",
+                      "type": "DatasetReference",
+                      "parameters": {
+                        "cw_fileName": {
+                          "value": "@item().fileName",
+                          "type": "Expression"
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "policy": {
+          "elapsedTimeMetric": {}
+        },
+        "parameters": {
+          "database_name": {
+            "type": "string",
+            "defaultValue": "[parameters('BackupAllTables_grpDivision_1group_bckWithHeaders_properties_parameters_database_name_databaseName')]"
+          },
+          "files_postfix": {
+            "type": "string"
+          }
+        },
+        "annotations": []
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/datasets/bckSourceDataSet')]",
+        "[concat(variables('workspaceId'), '/datasets/BackupContainer')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/BackupAllTables_grpDivision_2groups_bckWithHeaders')]",
+      "type": "Microsoft.Synapse/workspaces/pipelines",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "activities": [
+          {
+            "name": "LookupTables",
+            "description": "Get all tables for all schemas - list for export",
+            "type": "Lookup",
+            "dependsOn": [],
+            "policy": {
+              "timeout": "0.12:00:00",
+              "retry": 0,
+              "retryIntervalInSeconds": 30,
+              "secureOutput": false,
+              "secureInput": false
+            },
+            "userProperties": [],
+            "typeProperties": {
+              "source": {
+                "type": "SqlDWSource",
+                "sqlReaderQuery": {
+                  "value": "SELECT \n'[' + SCHEMA_NAME(t.schema_id) + '].[' + t.name + ']' as 'table_plus_schema'\n, SCHEMA_NAME(t.schema_id) as 'table_schema'\n, t.name as 'table_name'\n, '' + SCHEMA_NAME(t.schema_id) + '.' + t.name + '_' + '@{pipeline().parameters.files_postfix}' + '.bck'  as fileName\n,ntile(4) over (order by newid()) as grp\n  FROM sys.tables t \nLEFT JOIN sys.external_tables e\non t.object_id = e.object_id\nwhere e.type is NULL",
+                  "type": "Expression"
+                },
+                "queryTimeout": "00:06:00",
+                "partitionOption": "None"
+              },
+              "dataset": {
+                "referenceName": "bckSourceDataSet",
+                "type": "DatasetReference",
+                "parameters": {
+                  "dbName": {
+                    "value": "@pipeline().parameters.database_name",
+                    "type": "Expression"
+                  },
+                  "cw_schema": "NULL",
+                  "cw_table": "NULL"
+                }
+              },
+              "firstRowOnly": false
+            }
+          },
+          {
+            "name": "ForEach_Table_Grp_1_PerformBackup",
+            "type": "ForEach",
+            "dependsOn": [
+              {
+                "activity": "LookupTables",
+                "dependencyConditions": [
+                  "Succeeded"
+                ]
+              }
+            ],
+            "userProperties": [],
+            "typeProperties": {
+              "items": {
+                "value": "@activity('LookupTables').output.value",
+                "type": "Expression"
+              },
+              "activities": [
+                {
+                  "name": "if grp is 1 or 2",
+                  "type": "IfCondition",
+                  "dependsOn": [],
+                  "userProperties": [],
+                  "typeProperties": {
+                    "expression": {
+                      "value": "@lessOrEquals(item().grp,2)\n",
+                      "type": "Expression"
+                    },
+                    "ifTrueActivities": [
+                      {
+                        "name": "Copy_Table_To_File_Gr1",
+                        "type": "Copy",
+                        "dependsOn": [],
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureOutput": false,
+                          "secureInput": false
+                        },
+                        "userProperties": [
+                          {
+                            "name": "Source",
+                            "value": "@{item().TABLE_SCHEMA}.@{item().TABLE_NAME}"
+                          },
+                          {
+                            "name": "Destination",
+                            "value": "sac-mgmt-main//mkbackup//@{item().fileName}"
+                          }
+                        ],
+                        "typeProperties": {
+                          "source": {
+                            "type": "SqlDWSource",
+                            "queryTimeout": "02:00:00",
+                            "partitionOption": "None"
+                          },
+                          "sink": {
+                            "type": "DelimitedTextSink",
+                            "storeSettings": {
+                              "type": "AzureBlobFSWriteSettings"
+                            },
+                            "formatSettings": {
+                              "type": "DelimitedTextWriteSettings",
+                              "quoteAllText": true,
+                              "fileExtension": ".txt"
+                            }
+                          },
+                          "enableStaging": false,
+                          "translator": {
+                            "type": "TabularTranslator",
+                            "typeConversion": true,
+                            "typeConversionSettings": {
+                              "allowDataTruncation": true,
+                              "treatBooleanAsNumber": false
+                            }
+                          }
+                        },
+                        "inputs": [
+                          {
+                            "referenceName": "bckSourceDataSet",
+                            "type": "DatasetReference",
+                            "parameters": {
+                              "dbName": {
+                                "value": "@pipeline().parameters.database_name",
+                                "type": "Expression"
+                              },
+                              "cw_schema": {
+                                "value": "@item().TABLE_SCHEMA",
+                                "type": "Expression"
+                              },
+                              "cw_table": {
+                                "value": "@item().TABLE_NAME",
+                                "type": "Expression"
+                              }
+                            }
+                          }
+                        ],
+                        "outputs": [
+                          {
+                            "referenceName": "BackupContainer",
+                            "type": "DatasetReference",
+                            "parameters": {
+                              "cw_fileName": {
+                                "value": "@item().fileName",
+                                "type": "Expression"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "ForEach_Table_Grp_2_PerformBackup",
+            "type": "ForEach",
+            "dependsOn": [
+              {
+                "activity": "LookupTables",
+                "dependencyConditions": [
+                  "Succeeded"
+                ]
+              }
+            ],
+            "userProperties": [],
+            "typeProperties": {
+              "items": {
+                "value": "@activity('LookupTables').output.value",
+                "type": "Expression"
+              },
+              "activities": [
+                {
+                  "name": "if grp is 3 or 4",
+                  "type": "IfCondition",
+                  "dependsOn": [],
+                  "userProperties": [],
+                  "typeProperties": {
+                    "expression": {
+                      "value": "@greaterOrEquals(item().grp,3)",
+                      "type": "Expression"
+                    },
+                    "ifTrueActivities": [
+                      {
+                        "name": "Copy_Table_To_File_Gr2",
+                        "type": "Copy",
+                        "dependsOn": [],
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureOutput": false,
+                          "secureInput": false
+                        },
+                        "userProperties": [
+                          {
+                            "name": "Source",
+                            "value": "@{item().TABLE_SCHEMA}.@{item().TABLE_NAME}"
+                          },
+                          {
+                            "name": "Destination",
+                            "value": "sac-mgmt-main//mkbackup//@{item().fileName}"
+                          }
+                        ],
+                        "typeProperties": {
+                          "source": {
+                            "type": "SqlDWSource",
+                            "queryTimeout": "02:00:00",
+                            "partitionOption": "None"
+                          },
+                          "sink": {
+                            "type": "DelimitedTextSink",
+                            "storeSettings": {
+                              "type": "AzureBlobFSWriteSettings"
+                            },
+                            "formatSettings": {
+                              "type": "DelimitedTextWriteSettings",
+                              "quoteAllText": true,
+                              "fileExtension": ".txt"
+                            }
+                          },
+                          "enableStaging": false,
+                          "translator": {
+                            "type": "TabularTranslator",
+                            "typeConversion": true,
+                            "typeConversionSettings": {
+                              "allowDataTruncation": true,
+                              "treatBooleanAsNumber": false
+                            }
+                          }
+                        },
+                        "inputs": [
+                          {
+                            "referenceName": "bckSourceDataSet",
+                            "type": "DatasetReference",
+                            "parameters": {
+                              "dbName": {
+                                "value": "@pipeline().parameters.database_name",
+                                "type": "Expression"
+                              },
+                              "cw_schema": {
+                                "value": "@item().TABLE_SCHEMA",
+                                "type": "Expression"
+                              },
+                              "cw_table": {
+                                "value": "@item().TABLE_NAME",
+                                "type": "Expression"
+                              }
+                            }
+                          }
+                        ],
+                        "outputs": [
+                          {
+                            "referenceName": "BackupContainer",
+                            "type": "DatasetReference",
+                            "parameters": {
+                              "cw_fileName": {
+                                "value": "@item().fileName",
+                                "type": "Expression"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "policy": {
+          "elapsedTimeMetric": {}
+        },
+        "parameters": {
+          "database_name": {
+            "type": "string",
+            "defaultValue": "[parameters('BackupAllTables_grpDivision_2groups_bckWithHeaders_properties_parameters_database_name_databaseName')]"
+          },
+          "files_postfix": {
+            "type": "string"
+          }
+        },
+        "annotations": []
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/datasets/bckSourceDataSet')]",
+        "[concat(variables('workspaceId'), '/datasets/BackupContainer')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/BackupAllTables_grpDivision_4groups_bckWithHeaders')]",
+      "type": "Microsoft.Synapse/workspaces/pipelines",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "activities": [
+          {
+            "name": "LookupTables",
+            "description": "Get all tables for all schemas - list for export",
+            "type": "Lookup",
+            "dependsOn": [],
+            "policy": {
+              "timeout": "0.12:00:00",
+              "retry": 0,
+              "retryIntervalInSeconds": 30,
+              "secureOutput": false,
+              "secureInput": false
+            },
+            "userProperties": [],
+            "typeProperties": {
+              "source": {
+                "type": "SqlDWSource",
+                "sqlReaderQuery": {
+                  "value": "SELECT \n'[' + SCHEMA_NAME(t.schema_id) + '].[' + t.name + ']' as 'table_plus_schema'\n, SCHEMA_NAME(t.schema_id) as 'table_schema'\n, t.name as 'table_name'\n, '' + SCHEMA_NAME(t.schema_id) + '.' + t.name + '_' + '@{pipeline().parameters.files_postfix}' + '.bck'  as fileName\n,ntile(4) over (order by newid()) as grp\n  FROM sys.tables t \nLEFT JOIN sys.external_tables e\non t.object_id = e.object_id\nwhere e.type is NULL",
+                  "type": "Expression"
+                },
+                "queryTimeout": "00:06:00",
+                "partitionOption": "None"
+              },
+              "dataset": {
+                "referenceName": "bckSourceDataSet",
+                "type": "DatasetReference",
+                "parameters": {
+                  "dbName": {
+                    "value": "@pipeline().parameters.database_name",
+                    "type": "Expression"
+                  },
+                  "cw_schema": "NULL",
+                  "cw_table": "NULL"
+                }
+              },
+              "firstRowOnly": false
+            }
+          },
+          {
+            "name": "ForEach_Table_Grp_1_PerformBackup",
+            "type": "ForEach",
+            "dependsOn": [
+              {
+                "activity": "LookupTables",
+                "dependencyConditions": [
+                  "Succeeded"
+                ]
+              }
+            ],
+            "userProperties": [],
+            "typeProperties": {
+              "items": {
+                "value": "@activity('LookupTables').output.value",
+                "type": "Expression"
+              },
+              "activities": [
+                {
+                  "name": "if grp is 1",
+                  "type": "IfCondition",
+                  "dependsOn": [],
+                  "userProperties": [],
+                  "typeProperties": {
+                    "expression": {
+                      "value": "@equals(item().grp,1)",
+                      "type": "Expression"
+                    },
+                    "ifTrueActivities": [
+                      {
+                        "name": "Copy_Table_To_File_Gr1",
+                        "type": "Copy",
+                        "dependsOn": [],
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureOutput": false,
+                          "secureInput": false
+                        },
+                        "userProperties": [
+                          {
+                            "name": "Source",
+                            "value": "@{item().TABLE_SCHEMA}.@{item().TABLE_NAME}"
+                          },
+                          {
+                            "name": "Destination",
+                            "value": "sac-mgmt-main//mkbackup//@{item().fileName}"
+                          }
+                        ],
+                        "typeProperties": {
+                          "source": {
+                            "type": "SqlDWSource",
+                            "queryTimeout": "02:00:00",
+                            "partitionOption": "None"
+                          },
+                          "sink": {
+                            "type": "DelimitedTextSink",
+                            "storeSettings": {
+                              "type": "AzureBlobFSWriteSettings"
+                            },
+                            "formatSettings": {
+                              "type": "DelimitedTextWriteSettings",
+                              "quoteAllText": true,
+                              "fileExtension": ".txt"
+                            }
+                          },
+                          "enableStaging": false,
+                          "translator": {
+                            "type": "TabularTranslator",
+                            "typeConversion": true,
+                            "typeConversionSettings": {
+                              "allowDataTruncation": true,
+                              "treatBooleanAsNumber": false
+                            }
+                          }
+                        },
+                        "inputs": [
+                          {
+                            "referenceName": "bckSourceDataSet",
+                            "type": "DatasetReference",
+                            "parameters": {
+                              "dbName": {
+                                "value": "@pipeline().parameters.database_name",
+                                "type": "Expression"
+                              },
+                              "cw_schema": {
+                                "value": "@item().TABLE_SCHEMA",
+                                "type": "Expression"
+                              },
+                              "cw_table": {
+                                "value": "@item().TABLE_NAME",
+                                "type": "Expression"
+                              }
+                            }
+                          }
+                        ],
+                        "outputs": [
+                          {
+                            "referenceName": "BackupContainer",
+                            "type": "DatasetReference",
+                            "parameters": {
+                              "cw_fileName": {
+                                "value": "@item().fileName",
+                                "type": "Expression"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "ForEach_Table_Grp_2_PerformBackup",
+            "type": "ForEach",
+            "dependsOn": [
+              {
+                "activity": "LookupTables",
+                "dependencyConditions": [
+                  "Succeeded"
+                ]
+              }
+            ],
+            "userProperties": [],
+            "typeProperties": {
+              "items": {
+                "value": "@activity('LookupTables').output.value",
+                "type": "Expression"
+              },
+              "activities": [
+                {
+                  "name": "if grp is 2",
+                  "type": "IfCondition",
+                  "dependsOn": [],
+                  "userProperties": [],
+                  "typeProperties": {
+                    "expression": {
+                      "value": "@equals(item().grp,2)",
+                      "type": "Expression"
+                    },
+                    "ifTrueActivities": [
+                      {
+                        "name": "Copy_Table_To_File_Gr2",
+                        "type": "Copy",
+                        "dependsOn": [],
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureOutput": false,
+                          "secureInput": false
+                        },
+                        "userProperties": [
+                          {
+                            "name": "Source",
+                            "value": "@{item().TABLE_SCHEMA}.@{item().TABLE_NAME}"
+                          },
+                          {
+                            "name": "Destination",
+                            "value": "sac-mgmt-main//mkbackup//@{item().fileName}"
+                          }
+                        ],
+                        "typeProperties": {
+                          "source": {
+                            "type": "SqlDWSource",
+                            "queryTimeout": "02:00:00",
+                            "partitionOption": "None"
+                          },
+                          "sink": {
+                            "type": "DelimitedTextSink",
+                            "storeSettings": {
+                              "type": "AzureBlobFSWriteSettings"
+                            },
+                            "formatSettings": {
+                              "type": "DelimitedTextWriteSettings",
+                              "quoteAllText": true,
+                              "fileExtension": ".txt"
+                            }
+                          },
+                          "enableStaging": false,
+                          "translator": {
+                            "type": "TabularTranslator",
+                            "typeConversion": true,
+                            "typeConversionSettings": {
+                              "allowDataTruncation": true,
+                              "treatBooleanAsNumber": false
+                            }
+                          }
+                        },
+                        "inputs": [
+                          {
+                            "referenceName": "bckSourceDataSet",
+                            "type": "DatasetReference",
+                            "parameters": {
+                              "dbName": {
+                                "value": "@pipeline().parameters.database_name",
+                                "type": "Expression"
+                              },
+                              "cw_schema": {
+                                "value": "@item().TABLE_SCHEMA",
+                                "type": "Expression"
+                              },
+                              "cw_table": {
+                                "value": "@item().TABLE_NAME",
+                                "type": "Expression"
+                              }
+                            }
+                          }
+                        ],
+                        "outputs": [
+                          {
+                            "referenceName": "BackupContainer",
+                            "type": "DatasetReference",
+                            "parameters": {
+                              "cw_fileName": {
+                                "value": "@item().fileName",
+                                "type": "Expression"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "ForEach_Table_Grp_3_PerformBackup",
+            "type": "ForEach",
+            "dependsOn": [
+              {
+                "activity": "LookupTables",
+                "dependencyConditions": [
+                  "Succeeded"
+                ]
+              }
+            ],
+            "userProperties": [],
+            "typeProperties": {
+              "items": {
+                "value": "@activity('LookupTables').output.value",
+                "type": "Expression"
+              },
+              "activities": [
+                {
+                  "name": "if grp is 3",
+                  "type": "IfCondition",
+                  "dependsOn": [],
+                  "userProperties": [],
+                  "typeProperties": {
+                    "expression": {
+                      "value": "@equals(item().grp,3)",
+                      "type": "Expression"
+                    },
+                    "ifTrueActivities": [
+                      {
+                        "name": "Copy_Table_To_File_Gr3",
+                        "type": "Copy",
+                        "dependsOn": [],
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureOutput": false,
+                          "secureInput": false
+                        },
+                        "userProperties": [
+                          {
+                            "name": "Source",
+                            "value": "@{item().TABLE_SCHEMA}.@{item().TABLE_NAME}"
+                          },
+                          {
+                            "name": "Destination",
+                            "value": "sac-mgmt-main//mkbackup//@{item().fileName}"
+                          }
+                        ],
+                        "typeProperties": {
+                          "source": {
+                            "type": "SqlDWSource",
+                            "queryTimeout": "02:00:00",
+                            "partitionOption": "None"
+                          },
+                          "sink": {
+                            "type": "DelimitedTextSink",
+                            "storeSettings": {
+                              "type": "AzureBlobFSWriteSettings"
+                            },
+                            "formatSettings": {
+                              "type": "DelimitedTextWriteSettings",
+                              "quoteAllText": true,
+                              "fileExtension": ".txt"
+                            }
+                          },
+                          "enableStaging": false,
+                          "translator": {
+                            "type": "TabularTranslator",
+                            "typeConversion": true,
+                            "typeConversionSettings": {
+                              "allowDataTruncation": true,
+                              "treatBooleanAsNumber": false
+                            }
+                          }
+                        },
+                        "inputs": [
+                          {
+                            "referenceName": "bckSourceDataSet",
+                            "type": "DatasetReference",
+                            "parameters": {
+                              "dbName": {
+                                "value": "@pipeline().parameters.database_name",
+                                "type": "Expression"
+                              },
+                              "cw_schema": {
+                                "value": "@item().TABLE_SCHEMA",
+                                "type": "Expression"
+                              },
+                              "cw_table": {
+                                "value": "@item().TABLE_NAME",
+                                "type": "Expression"
+                              }
+                            }
+                          }
+                        ],
+                        "outputs": [
+                          {
+                            "referenceName": "BackupContainer",
+                            "type": "DatasetReference",
+                            "parameters": {
+                              "cw_fileName": {
+                                "value": "@item().fileName",
+                                "type": "Expression"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "ForEach_Table_Grp_4_PerformBackup",
+            "type": "ForEach",
+            "dependsOn": [
+              {
+                "activity": "LookupTables",
+                "dependencyConditions": [
+                  "Succeeded"
+                ]
+              }
+            ],
+            "userProperties": [],
+            "typeProperties": {
+              "items": {
+                "value": "@activity('LookupTables').output.value",
+                "type": "Expression"
+              },
+              "activities": [
+                {
+                  "name": "if grp is 4",
+                  "type": "IfCondition",
+                  "dependsOn": [],
+                  "userProperties": [],
+                  "typeProperties": {
+                    "expression": {
+                      "value": "@equals(item().grp,4)",
+                      "type": "Expression"
+                    },
+                    "ifTrueActivities": [
+                      {
+                        "name": "Copy_Table_To_File_gr4",
+                        "type": "Copy",
+                        "dependsOn": [],
+                        "policy": {
+                          "timeout": "0.12:00:00",
+                          "retry": 0,
+                          "retryIntervalInSeconds": 30,
+                          "secureOutput": false,
+                          "secureInput": false
+                        },
+                        "userProperties": [
+                          {
+                            "name": "Source",
+                            "value": "@{item().TABLE_SCHEMA}.@{item().TABLE_NAME}"
+                          },
+                          {
+                            "name": "Destination",
+                            "value": "sac-mgmt-main//mkbackup//@{item().fileName}"
+                          }
+                        ],
+                        "typeProperties": {
+                          "source": {
+                            "type": "SqlDWSource",
+                            "queryTimeout": "02:00:00",
+                            "partitionOption": "None"
+                          },
+                          "sink": {
+                            "type": "DelimitedTextSink",
+                            "storeSettings": {
+                              "type": "AzureBlobFSWriteSettings"
+                            },
+                            "formatSettings": {
+                              "type": "DelimitedTextWriteSettings",
+                              "quoteAllText": true,
+                              "fileExtension": ".txt"
+                            }
+                          },
+                          "enableStaging": false,
+                          "translator": {
+                            "type": "TabularTranslator",
+                            "typeConversion": true,
+                            "typeConversionSettings": {
+                              "allowDataTruncation": true,
+                              "treatBooleanAsNumber": false
+                            }
+                          }
+                        },
+                        "inputs": [
+                          {
+                            "referenceName": "bckSourceDataSet",
+                            "type": "DatasetReference",
+                            "parameters": {
+                              "dbName": {
+                                "value": "@pipeline().parameters.database_name",
+                                "type": "Expression"
+                              },
+                              "cw_schema": {
+                                "value": "@item().TABLE_SCHEMA",
+                                "type": "Expression"
+                              },
+                              "cw_table": {
+                                "value": "@item().TABLE_NAME",
+                                "type": "Expression"
+                              }
+                            }
+                          }
+                        ],
+                        "outputs": [
+                          {
+                            "referenceName": "BackupContainer",
+                            "type": "DatasetReference",
+                            "parameters": {
+                              "cw_fileName": {
+                                "value": "@item().fileName",
+                                "type": "Expression"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "policy": {
+          "elapsedTimeMetric": {}
+        },
+        "parameters": {
+          "database_name": {
+            "type": "string",
+            "defaultValue": "[parameters('BackupAllTables_grpDivision_4groups_bckWithHeaders_properties_parameters_database_name_databaseName')]"
+          },
+          "files_postfix": {
+            "type": "string"
+          }
+        },
+        "annotations": []
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/datasets/bckSourceDataSet')]",
+        "[concat(variables('workspaceId'), '/datasets/BackupContainer')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/RestoreAllTables_grpDivision_1group_Restore')]",
+      "type": "Microsoft.Synapse/workspaces/pipelines",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "activities": [
+          {
+            "name": "GetFilesList",
+            "type": "GetMetadata",
+            "dependsOn": [],
+            "policy": {
+              "timeout": "0.12:00:00",
+              "retry": 0,
+              "retryIntervalInSeconds": 30,
+              "secureOutput": false,
+              "secureInput": false
+            },
+            "userProperties": [],
+            "typeProperties": {
+              "dataset": {
+                "referenceName": "ListOfBackupFiles",
+                "type": "DatasetReference"
+              },
+              "fieldList": [
+                "childItems"
+              ],
+              "storeSettings": {
+                "type": "AzureBlobFSReadSettings",
+                "recursive": true,
+                "enablePartitionDiscovery": false
+              },
+              "formatSettings": {
+                "type": "DelimitedTextReadSettings"
+              }
+            }
+          },
+          {
+            "name": "ForEachFile",
+            "type": "ForEach",
+            "dependsOn": [
+              {
+                "activity": "FilterFilesWithPrefixOnly",
+                "dependencyConditions": [
+                  "Succeeded"
+                ]
+              }
+            ],
+            "userProperties": [],
+            "typeProperties": {
+              "items": {
+                "value": "@activity('FilterFilesWithPrefixOnly').output.Value",
+                "type": "Expression"
+              },
+              "isSequential": true,
+              "activities": [
+                {
+                  "name": "SetFileWithoutDate",
+                  "type": "SetVariable",
+                  "dependsOn": [
+                    {
+                      "activity": "SetFileNameToRestoreFrom",
+                      "dependencyConditions": [
+                        "Succeeded"
+                      ]
+                    }
+                  ],
+                  "policy": {
+                    "secureOutput": false,
+                    "secureInput": false
+                  },
+                  "userProperties": [],
+                  "typeProperties": {
+                    "variableName": "FileWithoutDate",
+                    "value": {
+                      "value": "@replace(variables('FileNameToCopyDataFrom'), pipeline().parameters.files_postfix,'')",
+                      "type": "Expression"
+                    }
+                  }
+                },
+                {
+                  "name": "SetSchema",
+                  "type": "SetVariable",
+                  "dependsOn": [
+                    {
+                      "activity": "SetFileWithoutDate",
+                      "dependencyConditions": [
+                        "Succeeded"
+                      ]
+                    }
+                  ],
+                  "policy": {
+                    "secureOutput": false,
+                    "secureInput": false
+                  },
+                  "userProperties": [],
+                  "typeProperties": {
+                    "variableName": "Schema",
+                    "value": {
+                      "value": "@split(variables('FileWithoutDate'),'.')[0]",
+                      "type": "Expression"
+                    }
+                  }
+                },
+                {
+                  "name": "SetTable",
+                  "type": "SetVariable",
+                  "dependsOn": [
+                    {
+                      "activity": "SetSchema",
+                      "dependencyConditions": [
+                        "Succeeded"
+                      ]
+                    }
+                  ],
+                  "policy": {
+                    "secureOutput": false,
+                    "secureInput": false
+                  },
+                  "userProperties": [],
+                  "typeProperties": {
+                    "variableName": "Table",
+                    "value": {
+                      "value": "@split(variables('FileWithoutDate'),'.')[1]",
+                      "type": "Expression"
+                    }
+                  }
+                },
+                {
+                  "name": "CopyFromFileToTable",
+                  "type": "Copy",
+                  "dependsOn": [
+                    {
+                      "activity": "SetTable",
+                      "dependencyConditions": [
+                        "Succeeded"
+                      ]
+                    }
+                  ],
+                  "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                  },
+                  "userProperties": [],
+                  "typeProperties": {
+                    "source": {
+                      "type": "DelimitedTextSource",
+                      "storeSettings": {
+                        "type": "AzureBlobFSReadSettings",
+                        "recursive": true,
+                        "wildcardFolderPath": "backup",
+                        "wildcardFileName": {
+                          "value": "@variables('FileNameToCopyDataFrom')",
+                          "type": "Expression"
+                        },
+                        "enablePartitionDiscovery": false
+                      },
+                      "formatSettings": {
+                        "type": "DelimitedTextReadSettings"
+                      }
+                    },
+                    "sink": {
+                      "type": "SqlDWSink",
+                      "writeBehavior": "Insert",
+                      "sqlWriterUseTableLock": false,
+                      "disableMetricsCollection": false
+                    },
+                    "enableStaging": false,
+                    "translator": {
+                      "type": "TabularTranslator",
+                      "typeConversion": true,
+                      "typeConversionSettings": {
+                        "allowDataTruncation": true,
+                        "treatBooleanAsNumber": false
+                      }
+                    }
+                  },
+                  "inputs": [
+                    {
+                      "referenceName": "ListOfBackupFiles",
+                      "type": "DatasetReference"
+                    }
+                  ],
+                  "outputs": [
+                    {
+                      "referenceName": "AzureSynapseAnalyticsRestoreTarget",
+                      "type": "DatasetReference",
+                      "parameters": {
+                        "dbName": {
+                          "value": "@pipeline().parameters.database_name",
+                          "type": "Expression"
+                        },
+                        "cw_schema": {
+                          "value": "@variables('Schema')",
+                          "type": "Expression"
+                        },
+                        "cw_table": {
+                          "value": "@variables('Table')",
+                          "type": "Expression"
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "SetFileNameToRestoreFrom",
+                  "type": "SetVariable",
+                  "dependsOn": [],
+                  "policy": {
+                    "secureOutput": false,
+                    "secureInput": false
+                  },
+                  "userProperties": [],
+                  "typeProperties": {
+                    "variableName": "FileNameToCopyDataFrom",
+                    "value": {
+                      "value": "@item().name",
+                      "type": "Expression"
+                    }
+                  }
+                },
+                {
+                  "name": "Print",
+                  "description": "For debug reasons",
+                  "type": "Script",
+                  "state": "Inactive",
+                  "onInactiveMarkAs": "Succeeded",
+                  "dependsOn": [
+                    {
+                      "activity": "SetTable",
+                      "dependencyConditions": [
+                        "Succeeded"
+                      ]
+                    }
+                  ],
+                  "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                  },
+                  "userProperties": [],
+                  "linkedServiceName": {
+                    "referenceName": "synw-spf-0091-prp-mgmt-WorkspaceDefaultSqlServer",
+                    "type": "LinkedServiceReference",
+                    "parameters": {
+                      "DBName": {
+                        "value": "@pipeline().parameters.database_name",
+                        "type": "Expression"
+                      }
+                    }
+                  },
+                  "typeProperties": {
+                    "scripts": [
+                      {
+                        "parameters": [
+                          {
+                            "name": "newfn",
+                            "type": "String",
+                            "value": {
+                              "value": "@variables('FileNameToCopyDataFrom')",
+                              "type": "Expression"
+                            },
+                            "direction": "Input"
+                          },
+                          {
+                            "name": "fname",
+                            "type": "String",
+                            "value": {
+                              "value": "@item().name",
+                              "type": "Expression"
+                            },
+                            "direction": "Input"
+                          },
+                          {
+                            "name": "tbl",
+                            "type": "String",
+                            "value": {
+                              "value": "@variables('Table')",
+                              "type": "Expression"
+                            },
+                            "direction": "Input"
+                          },
+                          {
+                            "name": "sch",
+                            "type": "String",
+                            "value": {
+                              "value": "@variables('Schema')",
+                              "type": "Expression"
+                            },
+                            "direction": "Input"
+                          },
+                          {
+                            "name": "fwn",
+                            "type": "String",
+                            "value": {
+                              "value": "@variables('FileWithoutDate')",
+                              "type": "Expression"
+                            },
+                            "direction": "Input"
+                          }
+                        ],
+                        "type": "Query",
+                        "text": {
+                          "value": "print('Looping...')\nselect @fname as FileToRestore",
+                          "type": "Expression"
+                        }
+                      }
+                    ],
+                    "scriptBlockExecutionTimeout": "02:00:00"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "FilterFilesWithPrefixOnly",
+            "type": "Filter",
+            "dependsOn": [
+              {
+                "activity": "GetFilesList",
+                "dependencyConditions": [
+                  "Succeeded"
+                ]
+              }
+            ],
+            "userProperties": [],
+            "typeProperties": {
+              "items": {
+                "value": "@activity('GetFilesList').output.childItems",
+                "type": "Expression"
+              },
+              "condition": {
+                "value": "@and(contains(item().name,pipeline().parameters.files_postfix),equals(item().type,'File'))",
+                "type": "Expression"
+              }
+            }
+          }
+        ],
+        "parameters": {
+          "database_name": {
+            "type": "string",
+            "defaultValue": "dpspf009101"
+          },
+          "files_postfix": {
+            "type": "string",
+            "defaultValue": "2025_05_05_22_42"
+          }
+        },
+        "variables": {
+          "FileNames": {
+            "type": "Array"
+          },
+          "fileToRestore": {
+            "type": "String"
+          },
+          "Schema": {
+            "type": "String"
+          },
+          "FileWithoutDate": {
+            "type": "String"
+          },
+          "Table": {
+            "type": "String"
+          },
+          "FileNameToCopyDataFrom": {
+            "type": "String"
+          },
+          "ArrayOfFiles": {
+            "type": "Array"
+          },
+          "FileName": {
+            "type": "String"
+          }
+        },
+        "annotations": []
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/datasets/ListOfBackupFiles')]",
+        "[concat(variables('workspaceId'), '/linkedServices/synw-spf-0091-prp-mgmt-WorkspaceDefaultSqlServer')]",
+        "[concat(variables('workspaceId'), '/datasets/AzureSynapseAnalyticsRestoreTarget')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/infra_db_stats')]",
+      "type": "Microsoft.Synapse/workspaces/pipelines",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "activities": [
+          {
+            "name": "infra_db_stats_runner",
+            "type": "SqlServerStoredProcedure",
+            "dependsOn": [],
+            "policy": {
+              "timeout": "0.12:00:00",
+              "retry": 1,
+              "retryIntervalInSeconds": 30,
+              "secureOutput": false,
+              "secureInput": false
+            },
+            "userProperties": [],
+            "typeProperties": {
+              "storedProcedureName": "[mgmt_xtinfra].[sp_infra_stats_runner]",
+              "storedProcedureParameters": {
+                "ops_type": {
+                  "value": {
+                    "value": "@variables('ops_type')",
+                    "type": "Expression"
+                  },
+                  "type": "String"
+                },
+                "sample_pct": {
+                  "value": {
+                    "value": "@variables('sample_pct')",
+                    "type": "Expression"
+                  },
+                  "type": "String"
+                },
+                "stats_type": {
+                  "value": {
+                    "value": "@variables('stats_type')",
+                    "type": "Expression"
+                  },
+                  "type": "String"
+                }
+              }
+            },
+            "linkedServiceName": {
+              "referenceName": "synw-spf-0091-prp-mgmt-WorkspaceDefaultSqlServer",
+              "type": "LinkedServiceReference",
+              "parameters": {
+                "DBName": {
+                  "value": "@pipeline().parameters.database_name",
+                  "type": "Expression"
+                }
+              }
+            }
+          }
+        ],
+        "policy": {
+          "elapsedTimeMetric": {}
+        },
+        "parameters": {
+          "database_name": {
+            "type": "String",
+            "defaultValue": "[parameters('infra_db_stats_properties_parameters_database_name_databaseName')]"
+          }
+        },
+        "variables": {
+          "ops_type": {
+            "type": "String",
+            "defaultValue": "STATS_COLLECTION"
+          },
+          "stats_type": {
+            "type": "String",
+            "defaultValue": "MANUAL_SAMPLING"
+          },
+          "sample_pct": {
+            "type": "String",
+            "defaultValue": "30"
+          }
+        },
+        "annotations": [],
+        "lastPublishTime": "2023-10-12T12:15:59Z"
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/linkedServices/synw-spf-0091-prp-mgmt-WorkspaceDefaultSqlServer')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/infra_table_dist_report')]",
+      "type": "Microsoft.Synapse/workspaces/pipelines",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "activities": [
+          {
+            "name": "sp_infra_exec_dist_recomm",
+            "type": "SqlServerStoredProcedure",
+            "dependsOn": [],
+            "policy": {
+              "timeout": "0.12:00:00",
+              "retry": 0,
+              "retryIntervalInSeconds": 30,
+              "secureOutput": false,
+              "secureInput": false
+            },
+            "userProperties": [],
+            "typeProperties": {
+              "storedProcedureName": "[mgmt_xtinfra].[sp_infra_exec_dist_recomm]",
+              "storedProcedureParameters": {
+                "NumMaxQueries": {
+                  "value": {
+                    "value": "@variables('NumMaxQueries')",
+                    "type": "Expression"
+                  },
+                  "type": "Int32"
+                },
+                "Queries": {
+                  "value": null,
+                  "type": "String"
+                }
+              }
+            },
+            "linkedServiceName": {
+              "referenceName": "synw-spf-0091-prp-mgmt-WorkspaceDefaultSqlServer",
+              "type": "LinkedServiceReference",
+              "parameters": {
+                "DBName": {
+                  "value": "@pipeline().parameters.database_name",
+                  "type": "Expression"
+                }
+              }
+            }
+          }
+        ],
+        "policy": {
+          "elapsedTimeMetric": {}
+        },
+        "parameters": {
+          "database_name": {
+            "type": "string",
+            "defaultValue": "[parameters('infra_table_dist_report_properties_parameters_database_name_databaseName')]"
+          }
+        },
+        "variables": {
+          "NumMaxQueries": {
+            "type": "Integer",
+            "defaultValue": 100
+          }
+        },
+        "annotations": []
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/linkedServices/synw-spf-0091-prp-mgmt-WorkspaceDefaultSqlServer')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/pl_permission_audit')]",
+      "type": "Microsoft.Synapse/workspaces/pipelines",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "description": "Collect database permissions",
+        "activities": [
+          {
+            "name": "permission_audit_runner",
+            "description": "stored procedure to run permissions list",
+            "type": "SqlServerStoredProcedure",
+            "dependsOn": [],
+            "policy": {
+              "timeout": "0.1:00:00",
+              "retry": 0,
+              "retryIntervalInSeconds": 30,
+              "secureOutput": false,
+              "secureInput": false
+            },
+            "userProperties": [],
+            "typeProperties": {
+              "storedProcedureName": "[mgmt_xtinfra].[sp_permission_audit]",
+              "storedProcedureParameters": {
+                "type": {
+                  "value": "DAILY",
+                  "type": "String"
+                }
+              }
+            },
+            "linkedServiceName": {
+              "referenceName": "synw-spf-0091-prp-mgmt-WorkspaceDefaultSqlServer",
+              "type": "LinkedServiceReference",
+              "parameters": {
+                "DBName": {
+                  "value": "@pipeline().parameters.database_name",
+                  "type": "Expression"
+                }
+              }
+            }
+          }
+        ],
+        "policy": {
+          "elapsedTimeMetric": {}
+        },
+        "parameters": {
+          "database_name": {
+            "type": "string",
+            "defaultValue": "[parameters('pl_permission_audit_properties_parameters_database_name_databaseName')]"
+          }
+        },
+        "annotations": []
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/linkedServices/synw-spf-0091-prp-mgmt-WorkspaceDefaultSqlServer')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/AzureSynapseAnalyticsRestoreTarget')]",
+      "type": "Microsoft.Synapse/workspaces/datasets",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "description": "TARGET where data will be restored from SOURCE",
+        "linkedServiceName": {
+          "referenceName": "synw-spf-0091-prp-mgmt-WorkspaceDefaultSqlServer",
+          "type": "LinkedServiceReference",
+          "parameters": {
+            "DBName": {
+              "value": "@dataset().dbName",
+              "type": "Expression"
+            }
+          }
+        },
+        "parameters": {
+          "dbName": {
+            "type": "string"
+          },
+          "cw_schema": {
+            "type": "string"
+          },
+          "cw_table": {
+            "type": "string"
+          }
+        },
+        "annotations": [],
+        "type": "AzureSqlDWTable",
+        "schema": [],
+        "typeProperties": {
+          "schema": {
+            "value": "@dataset().cw_schema",
+            "type": "Expression"
+          },
+          "table": {
+            "value": "@dataset().cw_table",
+            "type": "Expression"
+          }
+        }
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/linkedServices/synw-spf-0091-prp-mgmt-WorkspaceDefaultSqlServer')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/BackupContainer')]",
+      "type": "Microsoft.Synapse/workspaces/datasets",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "linkedServiceName": {
+          "referenceName": "DataLakeCurated",
+          "type": "LinkedServiceReference"
+        },
+        "parameters": {
+          "cw_fileName": {
+            "type": "String"
+          }
+        },
+        "annotations": [],
+        "type": "DelimitedText",
+        "typeProperties": {
+          "location": {
+            "type": "AzureBlobFSLocation",
+            "fileName": {
+              "value": "@dataset().cw_fileName",
+              "type": "Expression"
+            },
+            "folderPath": "backup",
+            "fileSystem": "sac-mgmt-main"
+          },
+          "columnDelimiter": ",",
+          "escapeChar": "\\",
+          "firstRowAsHeader": true,
+          "quoteChar": "\""
+        },
+        "schema": []
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/linkedServices/DataLakeCurated')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/ListOfBackupFiles')]",
+      "type": "Microsoft.Synapse/workspaces/datasets",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "linkedServiceName": {
+          "referenceName": "DataLakeCurated",
+          "type": "LinkedServiceReference"
+        },
+        "annotations": [],
+        "type": "DelimitedText",
+        "typeProperties": {
+          "location": {
+            "type": "AzureBlobFSLocation",
+            "folderPath": "backup",
+            "fileSystem": "sac-mgmt-main"
+          },
+          "columnDelimiter": ",",
+          "escapeChar": "\\",
+          "firstRowAsHeader": true,
+          "quoteChar": "\""
+        },
+        "schema": [
+          {
+            "type": "String"
+          }
+        ]
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/linkedServices/DataLakeCurated')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/bckSourceDataSet')]",
+      "type": "Microsoft.Synapse/workspaces/datasets",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "linkedServiceName": {
+          "referenceName": "synw-spf-0091-prp-mgmt-WorkspaceDefaultSqlServer",
+          "type": "LinkedServiceReference",
+          "parameters": {
+            "DBName": {
+              "value": "@dataset().dbName",
+              "type": "Expression"
+            }
+          }
+        },
+        "parameters": {
+          "dbName": {
+            "type": "string"
+          },
+          "cw_schema": {
+            "type": "string"
+          },
+          "cw_table": {
+            "type": "string"
+          }
+        },
+        "annotations": [],
+        "type": "AzureSqlDWTable",
+        "schema": [],
+        "typeProperties": {
+          "schema": {
+            "value": "@dataset().cw_schema",
+            "type": "Expression"
+          },
+          "table": {
+            "value": "@dataset().cw_table",
+            "type": "Expression"
+          }
+        }
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/linkedServices/synw-spf-0091-prp-mgmt-WorkspaceDefaultSqlServer')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/DataLakeCurated')]",
+      "type": "Microsoft.Synapse/workspaces/linkedServices",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "description": "Data Lake used for curated data.",
+        "annotations": [],
+        "type": "AzureBlobFS",
+        "typeProperties": {
+          "url": "[parameters('DataLakeCurated_properties_typeProperties_dfsEndpointUri')]"
+        },
+        "connectVia": {
+          "referenceName": "VNetEnabledIntegrationRuntime",
+          "type": "IntegrationRuntimeReference"
+        }
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/integrationRuntimes/VNetEnabledIntegrationRuntime')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/DedicatedForBackup')]",
+      "type": "Microsoft.Synapse/workspaces/linkedServices",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "annotations": [],
+        "type": "AzureSqlDW",
+        "typeProperties": {
+          "connectionString": {
+            "type": "SecureString",
+            "value": "[parameters('DedicatedForBackup_properties_typeProperties_connectionString')]"
+          }
+        },
+        "connectVia": {
+          "referenceName": "VNetEnabledIntegrationRuntime",
+          "type": "IntegrationRuntimeReference"
+        }
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/integrationRuntimes/VNetEnabledIntegrationRuntime')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/KeyVault001')]",
+      "type": "Microsoft.Synapse/workspaces/linkedServices",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "description": "Default Azure Key Vault.",
+        "annotations": [],
+        "type": "AzureKeyVault",
+        "typeProperties": {
+          "baseUrl": "[parameters('KeyVault001_properties_typeProperties_azureKeyVaultBaseUrl')]"
+        }
+      },
+      "dependsOn": []
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/SqlServerless001')]",
+      "type": "Microsoft.Synapse/workspaces/linkedServices",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "description": "Synapse Serverless.",
+        "parameters": {
+          "DBName": {
+            "type": "String"
+          }
+        },
+        "annotations": [],
+        "type": "AzureSqlDW",
+        "typeProperties": {
+          "connectionString": {
+            "type": "SecureString",
+            "value": "[parameters('SqlServerless001_properties_typeProperties_connectionString')]"
+          }
+        },
+        "connectVia": {
+          "referenceName": "VNetEnabledIntegrationRuntime",
+          "type": "IntegrationRuntimeReference"
+        }
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/integrationRuntimes/VNetEnabledIntegrationRuntime')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/synw-spf-0091-prp-mgmt-WorkspaceDefaultSqlServer')]",
+      "type": "Microsoft.Synapse/workspaces/linkedServices",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "parameters": {
+          "DBName": {
+            "type": "String"
+          }
+        },
+        "annotations": [],
+        "type": "AzureSqlDW",
+        "typeProperties": {
+          "connectionString": {
+            "type": "SecureString",
+            "value": "[parameters('synw-spf-0091-prp-mgmt-WorkspaceDefaultSqlServer_properties_typeProperties_connectionString')]"
+          }
+        },
+        "connectVia": {
+          "referenceName": "AutoResolveIntegrationRuntime",
+          "type": "IntegrationRuntimeReference"
+        }
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/synw-spf-0091-prp-mgmt-WorkspaceDefaultStorage')]",
+      "type": "Microsoft.Synapse/workspaces/linkedServices",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "annotations": [],
+        "type": "AzureBlobFS",
+        "typeProperties": {
+          "url": "[parameters('synw-spf-0091-prp-mgmt-WorkspaceDefaultStorage_properties_typeProperties_dfsEndpointUri')]"
+        },
+        "connectVia": {
+          "referenceName": "AutoResolveIntegrationRuntime",
+          "type": "IntegrationRuntimeReference"
+        }
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/Trg_Infra_DB_Stats_runner')]",
+      "type": "Microsoft.Synapse/workspaces/triggers",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "description": "Trigger for daily stats gathering job in dedicated sql pool.",
+        "annotations": [],
+        "runtimeState": "Started",
+        "pipelines": [
+          {
+            "pipelineReference": {
+              "referenceName": "infra_db_stats",
+              "type": "PipelineReference"
+            },
+            "parameters": {}
+          }
+        ],
+        "type": "ScheduleTrigger",
+        "typeProperties": {
+          "recurrence": {
+            "frequency": "Day",
+            "interval": 1,
+            "startTime": "2023-10-12T22:00:00",
+            "timeZone": "GMT Standard Time",
+            "schedule": {
+              "minutes": [
+                30
+              ],
+              "hours": [
+                22
+              ]
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/pipelines/infra_db_stats')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/Trg_infra_table_dist_report')]",
+      "type": "Microsoft.Synapse/workspaces/triggers",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "description": "Table Distribution report trigger",
+        "annotations": [],
+        "runtimeState": "Started",
+        "pipelines": [
+          {
+            "pipelineReference": {
+              "referenceName": "infra_table_dist_report",
+              "type": "PipelineReference"
+            },
+            "parameters": {}
+          }
+        ],
+        "type": "ScheduleTrigger",
+        "typeProperties": {
+          "recurrence": {
+            "frequency": "Week",
+            "interval": 1,
+            "startTime": "2023-11-06T09:50:00",
+            "timeZone": "GMT Standard Time",
+            "schedule": {
+              "minutes": [
+                35
+              ],
+              "hours": [
+                20
+              ],
+              "weekDays": [
+                "Friday"
+              ]
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/pipelines/infra_table_dist_report')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/trg_permission_audit_runner')]",
+      "type": "Microsoft.Synapse/workspaces/triggers",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "description": "Trigger to run permission audit",
+        "annotations": [],
+        "runtimeState": "Started",
+        "pipelines": [
+          {
+            "pipelineReference": {
+              "referenceName": "pl_permission_audit",
+              "type": "PipelineReference"
+            },
+            "parameters": {}
+          }
+        ],
+        "type": "ScheduleTrigger",
+        "typeProperties": {
+          "recurrence": {
+            "frequency": "Day",
+            "interval": 1,
+            "startTime": "2023-11-17T08:40:00",
+            "timeZone": "Central Europe Standard Time",
+            "schedule": {
+              "minutes": [
+                11
+              ],
+              "hours": [
+                23
+              ]
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/pipelines/pl_permission_audit')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/AutoResolveIntegrationRuntime')]",
+      "type": "Microsoft.Synapse/workspaces/integrationRuntimes",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "type": "Managed",
+        "typeProperties": {
+          "computeProperties": {
+            "location": "[parameters('AutoResolveIntegrationRuntime_properties_typeProperties_computeProperties_region')]",
+            "dataFlowProperties": {
+              "computeType": "General",
+              "coreCount": 8,
+              "timeToLive": 0
+            }
+          }
+        },
+        "managedVirtualNetwork": {
+          "type": "ManagedVirtualNetworkReference",
+          "referenceName": "default"
+        }
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/managedVirtualNetworks/default')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/SelfHostedIntegrationRuntime')]",
+      "type": "Microsoft.Synapse/workspaces/integrationRuntimes",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "type": "SelfHosted",
+        "description": "Self-Hosted Integration Runtime Provided by Platform.",
+        "typeProperties": {}
+      },
+      "dependsOn": []
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/VNetEnabledIntegrationRuntime')]",
+      "type": "Microsoft.Synapse/workspaces/integrationRuntimes",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "type": "Managed",
+        "typeProperties": {
+          "computeProperties": {
+            "location": "[parameters('VNetEnabledIntegrationRuntime_properties_typeProperties_computeProperties_region')]",
+            "dataFlowProperties": {
+              "computeType": "General",
+              "coreCount": 8,
+              "timeToLive": 0,
+              "cleanup": true,
+              "customProperties": []
+            },
+            "copyComputeScaleProperties": {
+              "dataIntegrationUnit": 64,
+              "timeToLive": 15
+            },
+            "pipelineExternalComputeScaleProperties": {
+              "timeToLive": 60,
+              "numberOfPipelineNodes": 2,
+              "numberOfExternalNodes": 2
+            }
+          }
+        },
+        "managedVirtualNetwork": {
+          "type": "ManagedVirtualNetworkReference",
+          "referenceName": "default"
+        }
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/managedVirtualNetworks/default')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/WorkspaceSystemIdentity')]",
+      "type": "Microsoft.Synapse/workspaces/credentials",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "type": "ManagedIdentity",
+        "typeProperties": {}
+      },
+      "dependsOn": []
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/dpspf009101')]",
+      "type": "Microsoft.Synapse/workspaces/sqlPools",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "collation": "LATIN1_GENERAL_100_CI_AS_SC_UTF8",
+        "maxSizeBytes": 263882790666240,
+        "annotations": []
+      },
+      "dependsOn": [],
+      "location": "westeurope"
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/default')]",
+      "type": "Microsoft.Synapse/workspaces/managedVirtualNetworks",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {},
+      "dependsOn": []
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/default/AzureMonitorPrivateLinkScope')]",
+      "type": "Microsoft.Synapse/workspaces/managedVirtualNetworks/managedPrivateEndpoints",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "privateLinkResourceId": "/subscriptions/10210a04-91a2-408d-b16c-534214814842/resourceGroups/rg-spf-0091-prp-mgmt/providers/Microsoft.Insights/privateLinkScopes/ampls-spf-0091-prp-mgmt",
+        "groupId": "azuremonitor",
+        "fqdns": [
+          "northeurope-2.in.ai.monitor.azure.com"
+        ]
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/managedVirtualNetworks/default')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/default/DataLakeCurated')]",
+      "type": "Microsoft.Synapse/workspaces/managedVirtualNetworks/managedPrivateEndpoints",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "privateLinkResourceId": "/subscriptions/10210a04-91a2-408d-b16c-534214814842/resourceGroups/rg-spf-0091-dev-stg/providers/Microsoft.Storage/storageAccounts/stspf0091prpcur",
+        "groupId": "dfs",
+        "fqdns": [
+          "stspf0091prpcur.dfs.core.windows.net"
+        ]
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/managedVirtualNetworks/default')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/default/DataLakeCuratedRestoreSource')]",
+      "type": "Microsoft.Synapse/workspaces/managedVirtualNetworks/managedPrivateEndpoints",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "privateLinkResourceId": "/subscriptions/dbb4728c-24de-44b6-b877-f8efef8a73de/resourceGroups/rg-spf-0091-prp-stg/providers/Microsoft.Storage/storageAccounts/stspf0091devcur",
+        "groupId": "dfs"
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/managedVirtualNetworks/default')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/default/DataLakeWorkspace')]",
+      "type": "Microsoft.Synapse/workspaces/managedVirtualNetworks/managedPrivateEndpoints",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "privateLinkResourceId": "/subscriptions/10210a04-91a2-408d-b16c-534214814842/resourceGroups/rg-spf-0091-prp-stg/providers/Microsoft.Storage/storageAccounts/stspf0091prpwks",
+        "groupId": "dfs",
+        "fqdns": [
+          "stspf0091prpwks.dfs.core.windows.net"
+        ]
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/managedVirtualNetworks/default')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/default/KeyVault001')]",
+      "type": "Microsoft.Synapse/workspaces/managedVirtualNetworks/managedPrivateEndpoints",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "privateLinkResourceId": "/subscriptions/10210a04-91a2-408d-b16c-534214814842/resourceGroups/rg-spf-0091-prp-mgmt/providers/Microsoft.KeyVault/vaults/kv-spf-0091-prp-mgmt",
+        "groupId": "vault",
+        "fqdns": [
+          "kv-spf-0091-prp-mgmt.vault.azure.net"
+        ]
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/managedVirtualNetworks/default')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/default/SynapseDev')]",
+      "type": "Microsoft.Synapse/workspaces/managedVirtualNetworks/managedPrivateEndpoints",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "privateLinkResourceId": "/subscriptions/10210a04-91a2-408d-b16c-534214814842/resourceGroups/rg-spf-0091-prp-mgmt/providers/Microsoft.Synapse/workspaces/synw-spf-0091-prp-mgmt",
+        "groupId": "dev",
+        "fqdns": [
+          "synw-spf-0091-prp-mgmt.dev.azuresynapse.net"
+        ]
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/managedVirtualNetworks/default')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/default/synapse-ws-sql--synw-spf-0091-prp-mgmt')]",
+      "type": "Microsoft.Synapse/workspaces/managedVirtualNetworks/managedPrivateEndpoints",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "privateLinkResourceId": "/subscriptions/dbb4728c-24de-44b6-b877-f8efef8a73de/resourceGroups/rg-spf-0091-prp-mgmt/providers/Microsoft.Synapse/workspaces/synw-spf-0091-prp-mgmt",
+        "groupId": "sql",
+        "fqdns": [
+          "synw-spf-0091-prp-mgmt.5d0bf847-b1dd-4566-99a6-bacaae6beee6.sql.azuresynapse.net"
+        ]
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/managedVirtualNetworks/default')]"
+      ]
+    },
+    {
+      "name": "[concat(parameters('workspaceName'), '/default/synapse-ws-sqlOnDemand--synw-spf-0091-prp-mgmt')]",
+      "type": "Microsoft.Synapse/workspaces/managedVirtualNetworks/managedPrivateEndpoints",
+      "apiVersion": "2019-06-01-preview",
+      "properties": {
+        "privateLinkResourceId": "/subscriptions/dbb4728c-24de-44b6-b877-f8efef8a73de/resourceGroups/rg-spf-0091-prp-mgmt/providers/Microsoft.Synapse/workspaces/synw-spf-0091-prp-mgmt",
+        "groupId": "sqlOnDemand",
+        "fqdns": [
+          "synw-spf-0091-prp-mgmt-ondemand.5d0bf847-b1dd-4566-99a6-bacaae6beee6.sql.azuresynapse.net"
+        ]
+      },
+      "dependsOn": [
+        "[concat(variables('workspaceId'), '/managedVirtualNetworks/default')]"
+      ]
+    }
+  ]
+}

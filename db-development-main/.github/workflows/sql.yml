@@ -1,0 +1,156 @@
+name: SQL Deployment
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "code/sql/**"
+      - "code/Simplifi/**"
+      - "code/sqlmaster/**"
+      - "code/MgmtDbTest/**"
+      - "code/EnvSensitiveDbTest/**"
+      - ".github/workflows/sql.yml"
+      - ".github/workflows/actions/database/action.yaml"
+      - ".github/workflows/actions/mgmt-db-test/action.yaml"
+      - ".github/mocks/mock_terraform_outputs-spf-0091-dev.json"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "code/sql/**"
+      - "code/Simplifi/**"
+      - "code/sqlmaster/**"
+      - "code/MgmtDbTest/**"
+      - "code/EnvSensitiveDbTest/**"
+      - ".github/workflows/sql.yml"
+      - ".github/workflows/actions/database/action.yaml"
+      - ".github/workflows/actions/mgmt-db-test/action.yaml"
+      - ".github/mocks/mock_terraform_outputs-spf-0091-dev.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: sql-deployment
+  cancel-in-progress: false
+
+env:
+  OE_NAME: "simplifi"
+  INFRA_APP_NAME: "0091"
+  STAGE: "dev"
+  SUBSCRIPTION_ID: "dbb4728c-24de-44b6-b877-f8efef8a73de"
+  MGMT_SYNAPSE_WORKSPACE_NAME: "synw-spf-0091-dev-mgmt"
+  TARGET_DATABASE_NAME: "dpspf009101"
+
+jobs:
+  database-dev:
+    name: "Database - Dev"
+    runs-on: [adp]
+    environment: db_dev
+
+    steps:
+      - name: Check Out Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Generate mock Terraform outputs
+        id: prepare_tf_outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mock_outputs=$(jq -c . .github/mocks/mock_terraform_outputs-spf-0091-dev.json)
+
+          echo "module outputs is ${mock_outputs}"
+          echo "terraform_outputs=${mock_outputs}" >> $GITHUB_OUTPUT
+          echo "has_mgmt_sql_pool=true" >> $GITHUB_OUTPUT
+          echo "Mock Terraform outputs generated."
+
+      - name: Database
+        uses: ./.github/workflows/actions/database
+        with:
+          target_environment: |
+            {
+              "oe_name": "simplifi",
+              "infra_app_name": "0091",
+              "stage": "dev",
+              "subscriptionId": "dbb4728c-24de-44b6-b877-f8efef8a73de",
+              "deploy": { "mgmt": { "version": "v2" } }
+            }
+          terraform_outputs: ${{ steps.prepare_tf_outputs.outputs.terraform_outputs }}
+          db_development_dir: "."
+          result_caching_enabled: false
+          arm_client_id: ${{ secrets.CLIENT_ID }}
+          arm_client_secret: ${{ secrets.CLIENT_SECRET }}
+          arm_tenant_id: ${{ secrets.TENANT_ID }}
+
+  mgmt-db-test:
+    name: "Deploy and run Mgmt Database Test"
+    runs-on: [adp]
+    environment: db_dev
+    if: |
+      needs.database-dev.result == 'success' && !cancelled()
+    needs: [database-dev]
+
+    steps:
+      - name: Check Out Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: "Deploy and run Mgmt Database Test"
+        id: mgmt_db_test
+        uses: ./.github/workflows/actions/mgmt-db-test
+        with:
+          oe_name: ${{ env.OE_NAME }}
+          infra_app_name: ${{ env.INFRA_APP_NAME }}
+          stage: ${{ env.STAGE }}
+          subscription_id: ${{ env.SUBSCRIPTION_ID }}
+          db_development_dir: "."
+          arm_client_id: ${{ secrets.CLIENT_ID }}
+          arm_client_secret: ${{ secrets.CLIENT_SECRET }}
+          arm_tenant_id: ${{ secrets.TENANT_ID }}
+          mgmt_synapse_workspace_name: ${{ env.MGMT_SYNAPSE_WORKSPACE_NAME }}
+          sql_pool_name: ${{ env.TARGET_DATABASE_NAME }}
+          sql_pool_collation: "LATIN1_GENERAL_100_CI_AS_SC_UTF8"
+
+  deploy-envsensitive-dbtest:
+    name: Build, Deploy and Run Tests (EnvSensitiveDbTest)
+    runs-on: [adp]
+    environment: db_dev
+    if: |
+      needs.database-dev.result == 'success' && !cancelled()
+    needs: [database-dev, mgmt-db-test]
+
+    steps:
+      - name: Check Out Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Filter test files path
+        # Use exact commit HASH to avoid supply chain attack. dorny/paths-filter@v3
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: changed_test_files
+        with:
+          filters: |
+            envSensitive:
+                - 'code/EnvSensitiveDbTest/**'
+                - 'code/sql/Simplifi/StoredProcedures/sp_infra_ext_decom.sql'
+                - 'code/sql/mgmt_xtinfra/StoredProcedures/sp_collate_columns_for_CETAS.sql'
+                - 'code/sql/mgmt_xtinfra/StoredProcedures/sp_infra_backup_single_table.sql'
+                - 'code/sql/mgmt_xtinfra/StoredProcedures/sp_infra_restore_single_table.sql'
+                - '.github/workflows/actions/env-sensitive-db-test/action.yaml'
+                - '.github/workflows/sql.yml'
+
+      - name: Run EnvSensitiveDbTest Action
+        if: steps.changed_test_files.outputs.envSensitive == 'true'
+        uses: ./.github/workflows/actions/env-sensitive-db-test/
+        with:
+          oe_name: ${{ env.OE_NAME }}
+          infra_app_name: ${{ env.INFRA_APP_NAME }}
+          stage: ${{ env.STAGE }}
+          mgmt_synapse_workspace_name: ${{ env.MGMT_SYNAPSE_WORKSPACE_NAME }}
+          sql_pool_name: ${{ env.TARGET_DATABASE_NAME }}
+          db_development_dir: "."
+          subscription_id: ${{ env.SUBSCRIPTION_ID }}
+          arm_client_id: ${{ secrets.CLIENT_ID }}
+          arm_client_secret: ${{ secrets.CLIENT_SECRET }}
+          arm_tenant_id: ${{ secrets.TENANT_ID }}

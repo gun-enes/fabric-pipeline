@@ -1,0 +1,59 @@
+find_replace:
+
+  # Workspace IDs
+  - find_value: 022e661d-bb04-42f2-81d7-14c558bd36cc   # azpoc-0001-dev-base001
+    replace_value:
+      tst: 73ded50c-9280-47ab-bc1f-a2bfbbc25e0c # azpoc-0001-tst-base001
+      # prd: <replace-with-this-value>
+  - find_value: 44397381-b694-4db9-af35-23f34b59e78e   # azpoc-0001-dev-base001eng001
+    replace_value:
+      tst: e346b4e5-8adc-4d01-9abe-2461dd1f28f2 # azpoc-0001-tst-base001eng001
+      # prd: <replace-with-this-value>
+
+  # Workspace Names
+  - find_value: azpoc-0001-dev-base001
+    replace_value:
+      tst: azpoc-0001-tst-base001
+      # prd: <replace-with-this-value>
+
+  - find_value: azpoc-0001-dev-base001eng001
+    replace_value:
+      tst: azpoc-0001-tst-base001eng001
+      # prd: <replace-with-this-value>
+
+  # Lakehouse IDs for Shortcut and Default Data Access Roles Translation
+  - find_value: a438fb0f-11cd-41d4-acfb-f59acfb53cbf   # lh_azpoc_0001_dev_base001_001
+    replace_value:
+      tst: 47e21c5a-2779-45b0-b64a-96d1daef0570 # lh_azpoc_0001_tst_base001_001
+      # prd: <replace-with-this-value>
+
+  - find_value: 7aeef6bd-b8f0-49b5-a216-5bd281cc7993   # lh_azpoc_0001_dev_base001eng001_001
+    replace_value:
+      tst: d757f978-d661-4596-8ccd-992df6846185 # lh_azpoc_0001_tst_base001eng001_001
+      # prd: <replace-with-this-value>
+
+  # Lakehouse Names // CICD Script will assume LH to be names the same in both stages, so we need to rename
+  - find_value: lh_azpoc_0001_dev_base001_001
+    replace_value:
+      tst: lh_azpoc_0001_tst_base001_001
+      # prd: <replace-with-this-value>
+  - find_value: lh_azpoc_0001_dev_base001eng001_001        # lakehouse display name
+    replace_value:
+      tst: lh_azpoc_0001_tst_base001eng001_001
+      # prd: <replace-with-this-value>
+
+  
+  # Notebook IDs (from same workspace) in pipelines: logical ids from dev are looked up in the repo (.platform file), translated to the name and then the id in tst is looked up
+
+  # Data Access Roles: WorkspaceId/ItemId
+  # base001
+  - find_value: 00000000-0000-0000-0000-000000000000/00000000-0000-0000-0000-000000000000   # sourcePath placeholder in data-access-roles.json
+    replace_value:
+      tst: 73ded50c-9280-47ab-bc1f-a2bfbbc25e0c/47e21c5a-2779-45b0-b64a-96d1daef0570
+      # prd: <replace-with-this-value>
+
+  # Connections
+  - find_value: 2f86c684-d313-4d90-a1eb-7f3cbba5f5cb # cc-azpoc-dev-notebook
+    replace_value:
+      tst: 3a8dd13d-ab1e-48eb-b94b-1f7c88782c74 # cc-azpoc-tst-notebook
+      # prd: <replace-with-this-value>

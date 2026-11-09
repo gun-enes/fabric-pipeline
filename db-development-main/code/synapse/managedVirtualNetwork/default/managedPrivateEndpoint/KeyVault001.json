@@ -1,0 +1,10 @@
+{
+  "name": "KeyVault001",
+  "properties": {
+    "privateLinkResourceId": "/subscriptions/10210a04-91a2-408d-b16c-534214814842/resourceGroups/rg-spf-0091-prp-mgmt/providers/Microsoft.KeyVault/vaults/kv-spf-0091-prp-mgmt",
+    "groupId": "vault",
+    "fqdns": [
+      "kv-spf-0091-prp-mgmt.vault.azure.net"
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+	"name": "synw-spf-0091-dev-mgmt-WorkspaceDefaultSqlServer",
+	"type": "Microsoft.Synapse/workspaces/linkedservices",
+	"properties": {
+		"typeProperties": {
+			"connectionString": "Data Source=tcp:synw-spf-0091-dev-mgmt.sql.azuresynapse.net,1433;Initial Catalog=@{linkedService().DBName}"
+		},
+		"parameters": {
+			"DBName": {
+				"type": "String"
+			}
+		},
+		"type": "AzureSqlDW",
+		"connectVia": {
+			"referenceName": "AutoResolveIntegrationRuntime",
+			"type": "IntegrationRuntimeReference"
+		},
+		"annotations": []
+	}
+}

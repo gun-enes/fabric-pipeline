@@ -1,0 +1,33 @@
+{
+	"name": "BackupContainerCETAS",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "DataLakeBackup",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"cw_folderName": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"folderPath": {
+					"value": "@dataset().cw_folderName",
+					"type": "Expression"
+				},
+				"fileSystem": "sac-mgmt-main"
+			},
+			"columnDelimiter": ",",
+			"compressionCodec": null,
+			"compressionLevel": "Optimal",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": []
+	}
+}

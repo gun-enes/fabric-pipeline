@@ -1,0 +1,26 @@
+{
+  "name": "AzureFunctionMnt",
+  "type": "Microsoft.Synapse/workspaces/linkedservices",
+  "properties": {
+    "description": "Maintenance Azure Function",
+    "annotations": [],
+    "type": "AzureFunction",
+    "typeProperties": {
+      "functionAppUrl": "https://func-sfshrd-mnt-dev.azurewebsites.net",
+      "authentication": "MSI",
+      "resourceId": "https://management.azure.com",
+      "functionKey": {
+        "type": "AzureKeyVaultSecret",
+        "store": {
+          "referenceName": "KeyVaultFunction",
+          "type": "LinkedServiceReference"
+        },
+        "secretName": "MaintenanceDefaultFunctionKey"
+      }
+    },
+    "connectVia": {
+      "referenceName": "VNetEnabledIntegrationRuntime",
+      "type": "IntegrationRuntimeReference"
+    }
+  }
+}

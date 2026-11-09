@@ -1,0 +1,140 @@
+{
+	"name": "pl_process_schedules",
+	"properties": {
+		"activities": [
+			{
+				"name": "Execute Initialize Variables",
+				"type": "ExecutePipeline",
+				"dependsOn": [],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pl_initialize_variables",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
+				}
+			},
+			{
+				"name": "Read From schedule table",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Execute Initialize Variables",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:30:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlDWSource",
+						"queryTimeout": "00:30:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "schedule_Dataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"dbName": {
+								"value": "@pipeline().parameters.database_name",
+								"type": "Expression"
+							}
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "Execute create_expanded_schedules",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Call Handle Schedules",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:30:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[mgmt_xtinfra].[sp_infra_create_expanded_schedules]",
+					"storedProcedureParameters": {
+						"expanded_schedules": {
+							"value": {
+								"value": "@activity('Call Handle Schedules').output.Response",
+								"type": "Expression"
+							}
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "synw-spf-0091-dev-mgmt-WorkspaceDefaultSqlServer",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"DBName": {
+							"value": "@pipeline().parameters.database_name",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "Call Handle Schedules",
+				"type": "AzureFunctionActivity",
+				"dependsOn": [
+					{
+						"activity": "Read From schedule table",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:30:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"functionName": "handle-schedules",
+					"body": "@concat('{\"schedules\":',string(activity('Read From schedule table').output.value), '}')\n",
+					"method": "POST"
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureFunctionMnt",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"parameters": {
+			"database_name": {
+				"type": "string",
+				"defaultValue": "sqlPool001"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2024-08-07T08:20:30Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

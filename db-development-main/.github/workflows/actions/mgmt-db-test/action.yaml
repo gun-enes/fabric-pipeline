@@ -1,0 +1,230 @@
+name: 'Database Tests'
+description: 'Build, Deploy and Run Database Test Project'
+
+inputs:
+  oe_name:
+    required: true
+    type: string
+  infra_app_name:
+    required: true
+    type: string
+  stage:
+    required: true
+    type: string
+  mgmt_synapse_workspace_name:
+    required: true
+    type: string
+  sql_pool_name:
+    required: true
+    type: string
+  sql_pool_collation:
+    required: true
+    type: string
+  db_development_dir:
+    required: true
+    type: string
+  subscription_id:
+    required: true
+    type: string
+  arm_client_id:
+    required: true
+  arm_client_secret:
+    required: true
+  arm_tenant_id:
+    required: true
+outputs:
+  artifact_path:
+    description: Artifact path for the test results
+    value: ${{ steps.extract_results.outputs.testResultsFile }}
+
+runs:
+  using: "composite"
+  steps:
+  - name: Prep environment
+    id: prep_environment
+    shell: bash
+    env:
+      TARGET_OE_NAME: ${{ inputs.oe_name }}
+      TARGET_INFRA_APP_NAME: ${{ inputs.infra_app_name }}
+      TARGET_STAGE: ${{ inputs.stage }}
+
+      ARM_SUBSCRIPTION_ID: ${{ inputs.subscription_id }}
+      ARM_CLIENT_ID: ${{ inputs.arm_client_id }}
+      ARM_TENANT_ID: ${{ inputs.arm_tenant_id }}
+
+      TMP_WORKDIR: ${{ github.workspace }}/tmp
+      SQL_POOL_COLLATTION: ${{ inputs.sql_pool_collation }}
+
+    run: |
+      set -euo pipefail
+
+      mkdir -p "${TMP_WORKDIR}"
+
+      # Function to safely set environment variables with heredoc delimiters
+      set_env_var() {
+        local var_name="$1"
+        local var_value="$2"
+        local delimiter
+        delimiter="$(openssl rand -hex 8)"
+        {
+          echo "${var_name}<<${delimiter}"
+          echo "${var_value}"
+          echo "${delimiter}"
+        } >> $GITHUB_ENV
+      }
+
+      set_env_var "TMP_WORKDIR" "${TMP_WORKDIR}"
+      set_env_var "ARM_SUBSCRIPTION_ID" "${ARM_SUBSCRIPTION_ID}"
+      set_env_var "ARM_CLIENT_ID" "${ARM_CLIENT_ID}"
+      set_env_var "ARM_TENANT_ID" "${ARM_TENANT_ID}"
+      set_env_var "TARGET_OE_NAME" "${TARGET_OE_NAME}"
+      set_env_var "TARGET_INFRA_APP_NAME" "${TARGET_INFRA_APP_NAME}"
+      set_env_var "TARGET_STAGE" "${TARGET_STAGE}"
+
+      echo "collation is ${SQL_POOL_COLLATTION}"
+      if [[ "${SQL_POOL_COLLATTION}" == *"_CI_"* ]] || [ "${SQL_POOL_COLLATTION}" == "" ]; then
+        set_env_var "IS_COLLATION_CI" "true"
+      else
+        set_env_var "IS_COLLATION_CI" "false"
+      fi
+
+  # Modify Database project collation
+  - name: Modify Database project collation
+    id: set_collation
+    shell: bash
+    if: env.IS_COLLATION_CI == 'false'
+    working-directory: ${{ inputs.db_development_dir }}/code/MgmtDbTest
+    run: |
+      echo "Modifying sqlproj file"
+      sed -i 's#<DefaultCollation>.*</DefaultCollation>#<DefaultCollation>${{ inputs.sql_pool_collation }}</DefaultCollation>#' MgmtDbTest.sqlproj
+
+  - name: Build project model
+    id: build_project
+    working-directory: ${{ inputs.db_development_dir }}/code/MgmtDbTest
+    shell: bash
+    run: |
+      set -euo pipefail
+      build_output_dir=${TMP_WORKDIR}/MgmtDbTest-project-${TARGET_OE_NAME}-${TARGET_INFRA_APP_NAME}-${TARGET_STAGE}
+      mkdir -p ${build_output_dir}
+
+      echo "build project MgmtDbTest"
+      /usr/bin/dotnet build /p:NetCoreBuild=true \
+      --configuration Release \
+      --output "${build_output_dir}"
+
+      ls -la "${build_output_dir}"
+      echo "output_dir=${build_output_dir}" >> "$GITHUB_OUTPUT"
+
+  - name: Azure Login
+    id: az_login
+    shell: bash
+    working-directory: ./
+    env:
+      ARM_CLIENT_SECRET: ${{ inputs.arm_client_secret }}
+    run: |
+      set -euo pipefail
+      az login --service-principal \
+      --username "${ARM_CLIENT_ID}" \
+      --password "${ARM_CLIENT_SECRET}" \
+      --tenant "${ARM_TENANT_ID}" \
+      --output none
+      az account set \
+      --subscription ${ARM_SUBSCRIPTION_ID} \
+      --output none
+
+  # SQL Package Deployment
+  - name: SQL Package Deployment and Run Tests
+    id: sqlpackage_deployment
+    working-directory: ./
+    shell: bash
+    env:
+      MGMT_SYNW_SQLPOOL_NAME: ${{ inputs.sql_pool_name }}
+      MGMT_SYNW_SQLPOOL_URI: ${{ inputs.mgmt_synapse_workspace_name }}.sql.azuresynapse.net
+      PROJECT_BUILD_OUTPUT_DIR: ${{ steps.build_project.outputs.output_dir }}
+      ARM_CLIENT_ID: ${{ inputs.arm_client_id }}
+      ARM_CLIENT_SECRET: ${{ inputs.arm_client_secret }}
+    run: |
+      SQL_CONNECTION_STRING="Server=tcp:${MGMT_SYNW_SQLPOOL_URI},1433;Initial Catalog=${MGMT_SYNW_SQLPOOL_NAME};Encrypt=True;Authentication=Active Directory Service Principal;User Id=${ARM_CLIENT_ID}; Password=${ARM_CLIENT_SECRET}"
+      ~/sqlpackage/sqlpackage \
+        /Action:Publish \
+        /SourceFile:"${PROJECT_BUILD_OUTPUT_DIR}/MgmtDbTest.dacpac" \
+        /TargetConnectionString:"${SQL_CONNECTION_STRING}" \
+        /Diagnostics:true \
+        /p:VerifyCollationCompatibility=true \
+        /p:VerifyDeployment=true \
+        /p:BlockOnPossibleDataLoss=true \
+        /p:DropObjectsNotInSource=false \
+        2>&1 | tee test_results.txt
+
+  # Extract test results
+  - name: Extract Test Results
+    id: extract_results
+    if: always() && steps.sqlpackage_deployment.result != 'skipped'
+    working-directory: ./
+    shell: bash
+    env:
+      GITHUB_REPOSITORY: ${{ github.repository }}
+      GITHUB_RUN_ID: ${{ github.run_id }}
+      GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+    run: |
+      RUN_URL="https://github.developer.allianz.io/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/attempts/${GITHUB_RUN_ATTEMPT}"
+
+      summary=$(
+        awk '
+          found && /Test Case Summary:/ {print; flag=0; found=0}
+          flag {print}
+          prev=="+----------------------+" && $0=="|Test Execution Summary|" {print prev; print; flag=1; found=1}
+          {prev=$0}
+        ' test_results.txt
+      )
+      if [[ -z "$summary" ]]; then
+        echo "Could not find the summary table in the output"
+        result_file_name="test-result-$(date +%H.%M.%S)-fail.txt"
+        echo "RUN URL: $RUN_URL" >> "$result_file_name"
+        awk '
+          /\*\*\*/ {flag=1}
+          flag {print}
+        ' test_results.txt >> "$result_file_name"
+      else
+        readarray -t failed_tests < <(
+          echo "$summary" | awk -F'[][]' '/^\[.*\] failed:/ {print $2}'
+        )
+        result_file_name="test-result-$(date +%H.%M.%S)-$((( ${#failed_tests[@]} )) && echo "fail" || echo "pass").txt"
+        echo "RUN URL: $RUN_URL" >> "$result_file_name"
+        echo "$summary" >> "$result_file_name"
+        for test in "${failed_tests[@]}"; do
+          awk -v test_name="$test" '
+            flag && (/Executing Test:/ || /Executing Rollback:/ || /\+----------------------+/) {flag=0}
+            $0 ~ ("^Executing Test: " test_name "$") {flag=1}
+            flag {print}
+          ' test_results.txt >> "$result_file_name"
+        done
+      fi
+      echo "testResultsFile=$result_file_name" >> $GITHUB_OUTPUT
+
+  # Upload test results as an artifact
+  - name: Upload Test Results
+    if: always() && steps.sqlpackage_deployment.result != 'skipped' && steps.extract_results.outputs.testResultsFile != ''
+    uses: actions/upload-artifact@c6a366c94c3e0affe28c06c8df20a878f24da3cf # v3.2.2
+    with:
+      name: ${{ steps.extract_results.outputs.testResultsFile }}
+      path: ./${{ steps.extract_results.outputs.testResultsFile }}
+
+  # Delete tSQLt_synapse
+  - name: Delete tSQLt_synapse
+    id: delete_tSQLt_synapse
+    if: always()
+    env:
+      MGMT_SYNW_SQLPOOL_NAME: ${{ inputs.sql_pool_name }}
+      MGMT_SYNW_SQLPOOL_URI: ${{ inputs.mgmt_synapse_workspace_name }}.sql.azuresynapse.net
+      ARM_CLIENT_ID: ${{ inputs.arm_client_id }}
+      ARM_CLIENT_SECRET: ${{ inputs.arm_client_secret }}
+    run: |
+      echo "run tSQLt removal script"
+      $SQL_CONNECTION_STRING = "Server=tcp:$($env:MGMT_SYNW_SQLPOOL_URI),1433;Initial Catalog=$($env:MGMT_SYNW_SQLPOOL_NAME);Encrypt=True;Authentication=Active Directory Service Principal;User Id=$($env:ARM_CLIENT_ID); Password=$($env:ARM_CLIENT_SECRET)"
+      Invoke-Sqlcmd `
+        -ConnectionString $SQL_CONNECTION_STRING `
+        -InputFile "delete_tSQLt_synapse.sql" `
+        -Verbose
+    working-directory: ${{ inputs.db_development_dir }}/code/scripts
+    shell: pwsh

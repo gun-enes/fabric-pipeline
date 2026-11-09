@@ -1,0 +1,71 @@
+ [
+    {
+      "name": "readFolder01",
+      "id": "9a9527ce-bb27-4145-b129-65ab16016d71",
+      "etag": "\"82d91b0bd0334c1eb524cf69715acdc7\"",
+      "kind": "Policy",
+      "decisionRules": [
+        {
+          "effect": "Permit",
+          "permission": [
+            {
+              "attributeName": "Path",
+              "attributeValueIncludedIn": [
+                "/Files/Folder01"
+              ]
+            },
+            {
+              "attributeName": "Action",
+              "attributeValueIncludedIn": [
+                "Read"
+              ]
+            }
+          ]
+        }
+      ],
+      "members": {
+        "microsoftEntraMembers": [
+          {
+            "tenantId": "6e06e42d-6925-47c6-b9e7-9581c7ca302a",
+            "objectId": "823bc79e-914e-4854-a339-c1d9174dd8ee"
+          }
+        ],
+        "fabricItemMembers": []
+      }
+    },
+    {
+      "name": "DefaultReader",
+      "id": "00558345-ccbd-454c-b183-dd5491d87664",
+      "etag": "\"7f49c42cc681489597d8fdfda3819db4\"",
+      "kind": "Policy",
+      "decisionRules": [
+        {
+          "effect": "Permit",
+          "permission": [
+            {
+              "attributeName": "Action",
+              "attributeValueIncludedIn": [
+                "Read"
+              ]
+            },
+            {
+              "attributeName": "Path",
+              "attributeValueIncludedIn": [
+                "*"
+              ]
+            }
+          ]
+        }
+      ],
+      "members": {
+        "fabricItemMembers": [
+          {
+            "sourcePath": "022e661d-bb04-42f2-81d7-14c558bd36cc/a438fb0f-11cd-41d4-acfb-f59acfb53cbf",
+            "itemAccess": [
+              "ReadAll"
+            ]
+          }
+        ]
+      }
+    }
+  ]

@@ -1,0 +1,16 @@
+{
+  "name": "DataLakeCurated",
+  "type": "Microsoft.Synapse/workspaces/linkedservices",
+  "properties": {
+    "description": "Data Lake used for curated data.",
+    "annotations": [],
+    "type": "AzureBlobFS",
+    "typeProperties": {
+      "url": "https://stspf0091devcur.dfs.core.windows.net/"
+    },
+    "connectVia": {
+      "referenceName": "VNetEnabledIntegrationRuntime",
+      "type": "IntegrationRuntimeReference"
+    }
+  }
+}

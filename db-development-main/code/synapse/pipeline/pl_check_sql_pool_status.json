@@ -1,0 +1,198 @@
+{
+	"name": "pl_check_sql_pool_status",
+	"properties": {
+		"activities": [
+			{
+				"name": "Until SQL Pool in desired state",
+				"type": "Until",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(toLower(pipeline().parameters.expected_state), toLower(variables('pool_status')))",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Check SQLPool Status",
+							"type": "WebActivity",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.00:10:00",
+								"retry": 3,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"method": "GET",
+								"url": {
+									"value": "@concat('https://',pipeline().parameters.workspace_name,'.dev.azuresynapse.net/sqlPools/',pipeline().parameters.sqlPool_name,'?api-version=2020-12-01')",
+									"type": "Expression"
+								},
+								"connectVia": {
+									"referenceName": "VNetEnabledIntegrationRuntime",
+									"type": "IntegrationRuntimeReference"
+								},
+								"authentication": {
+									"type": "MSI",
+									"resource": "https://dev.azuresynapse.net/"
+								}
+							}
+						},
+						{
+							"name": "Set SQLPool Status",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Check SQLPool Status",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "pool_status",
+								"value": {
+									"value": "@activity('Check SQLPool Status').output.properties.status",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "check if desired state",
+							"type": "IfCondition",
+							"dependsOn": [
+								{
+									"activity": "Set SQLPool Status",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@equals(toLower(pipeline().parameters.expected_state), toLower(variables('pool_status')))",
+									"type": "Expression"
+								},
+								"ifFalseActivities": [
+									{
+										"name": "Delay",
+										"type": "Wait",
+										"dependsOn": [],
+										"userProperties": [],
+										"typeProperties": {
+											"waitTimeInSeconds": 60
+										}
+									}
+								]
+							}
+						}
+					],
+					"timeout": "0.00:30:00"
+				}
+			},
+			{
+				"name": "If pool_status Online",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Until SQL Pool in desired state",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(toLower(variables('pool_status')), 'online')",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "Set pool_status Paused",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "pipelineReturnValue",
+								"value": [
+									{
+										"key": "pool_status",
+										"value": {
+											"type": "String",
+											"content": "paused"
+										}
+									}
+								],
+								"setSystemVariable": true
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "Set pool_status Online",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "pipelineReturnValue",
+								"value": [
+									{
+										"key": "pool_status",
+										"value": {
+											"type": "String",
+											"content": "online"
+										}
+									}
+								],
+								"setSystemVariable": true
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"workspace_name": {
+				"type": "string",
+				"defaultValue": "synw-tdp-e2e001-dev-mgmt"
+			},
+			"sqlPool_name": {
+				"type": "string",
+				"defaultValue": "sqlPool001"
+			},
+			"expected_state": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"pool_status": {
+				"type": "String",
+				"defaultValue": "Unknown"
+			}
+		},
+		"folder": {
+			"name": "Maintenance_End_Activities"
+		},
+		"annotations": [],
+		"lastPublishTime": "2025-04-15T14:04:53Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

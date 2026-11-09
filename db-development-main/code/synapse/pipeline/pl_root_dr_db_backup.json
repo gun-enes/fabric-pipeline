@@ -1,0 +1,446 @@
+{
+	"name": "pl_root_dr_db_backup",
+	"properties": {
+		"activities": [
+			{
+				"name": "Loop Until All Tables Have Backup",
+				"type": "Until",
+				"dependsOn": [
+					{
+						"activity": "Source Table Hash",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@or(equals(variables('remaining_tables'), 0), equals(variables('retry_count'), 0))",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Lookup Failed Tables",
+							"type": "Lookup",
+							"dependsOn": [
+								{
+									"activity": "Set retry count variable",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.00:30:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlDWSource",
+									"sqlReaderQuery": "SELECT filename FROM [mgmt_xtinfra].[infra_dr_backup_master]\nWHERE status = 'BACKUP-FAILED'",
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "DR_BACKUP_LINK",
+									"type": "DatasetReference",
+									"parameters": {
+										"dbName": "@pipeline().parameters.db_name",
+										"cw_schema": "NULL",
+										"cw_table": "NULL",
+										"WorkspaceName": "@pipeline().parameters.wks_name"
+									}
+								},
+								"firstRowOnly": false
+							}
+						},
+						{
+							"name": "Execute Delete Failed Tables Blobs",
+							"type": "ExecutePipeline",
+							"dependsOn": [
+								{
+									"activity": "Lookup Failed Tables",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "pl_delete_failed_tables_blob",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"filesToDelete": {
+										"value": "@activity('Lookup Failed Tables').output.value",
+										"type": "Expression"
+									}
+								}
+							}
+						},
+						{
+							"name": "Lookup Number of New or Failed Tables",
+							"type": "Lookup",
+							"dependsOn": [
+								{
+									"activity": "Backup All Tables",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.00:30:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlDWSource",
+									"sqlReaderQuery": "SELECT COUNT(*) FROM [mgmt_xtinfra].[infra_dr_backup_master]\nWHERE status <> 'BACKUP-SUCCESS'\nAND table_name <> 'infra_dr_backup_master'",
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "DR_BACKUP_LINK",
+									"type": "DatasetReference",
+									"parameters": {
+										"dbName": "@pipeline().parameters.db_name",
+										"cw_schema": "NULL",
+										"cw_table": "NULL",
+										"WorkspaceName": "@pipeline().parameters.wks_name"
+									}
+								},
+								"firstRowOnly": true
+							}
+						},
+						{
+							"name": "Set remaining tables variable",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Lookup Number of New or Failed Tables",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "remaining_tables",
+								"value": {
+									"value": "@int(activity('Lookup Number of New or Failed Tables').output.firstRow[''])",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Backup All Tables",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Execute Delete Failed Tables Blobs",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[mgmt_xtinfra].[sp_infra_backup_all_tables]"
+							},
+							"linkedServiceName": {
+								"referenceName": "DedicatedForBackup",
+								"type": "LinkedServiceReference",
+								"parameters": {
+									"DBName": {
+										"value": "@pipeline().parameters.db_name",
+										"type": "Expression"
+									},
+									"WorkspaceName": {
+										"value": "@pipeline().parameters.wks_name",
+										"type": "Expression"
+									}
+								}
+							}
+						},
+						{
+							"name": "Set temporary iterator variable",
+							"description": "Set temporary iterator variable by decrementing retry_count",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "temp_iterator",
+								"value": {
+									"value": "@sub(variables('retry_count'), 1)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Set retry count variable",
+							"description": "Set retry count variable from temporary iterator variable",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Set temporary iterator variable",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "retry_count",
+								"value": {
+									"value": "@variables('temp_iterator')",
+									"type": "Expression"
+								}
+							}
+						}
+					],
+					"timeout": "1.12:00:00"
+				}
+			},
+			{
+				"name": "Init Backup Info",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.00:45:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[mgmt_xtinfra].[sp_infra_backup_runner]",
+					"storedProcedureParameters": {
+						"dir_name": {
+							"value": {
+								"value": "@pipeline().parameters.dir_name",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"restore_type": {
+							"value": "FULL",
+							"type": "String"
+						},
+						"schema_name": {
+							"value": null
+						},
+						"table_name": {
+							"value": null
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "DedicatedForBackup",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"DBName": {
+							"value": "@pipeline().parameters.db_name",
+							"type": "Expression"
+						},
+						"WorkspaceName": {
+							"value": "@pipeline().parameters.wks_name",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "Source Table Hash",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Init Backup Info",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.02:30:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[mgmt_xtinfra].[sp_infra_dr_backup_checksum]",
+					"storedProcedureParameters": {
+						"OPS_TYPE": {
+							"value": "SOURCE",
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "DedicatedForBackup",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"DBName": {
+							"value": "@pipeline().parameters.db_name",
+							"type": "Expression"
+						},
+						"WorkspaceName": {
+							"value": "@pipeline().parameters.wks_name",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "Backup infra_dr_backup_master",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Loop Until All Tables Have Backup",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:45:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[mgmt_xtinfra].[sp_infra_backup_single_table]",
+					"storedProcedureParameters": {
+						"table_schema": {
+							"value": "mgmt_xtinfra",
+							"type": "String"
+						},
+						"table_name": {
+							"value": "infra_dr_backup_master",
+							"type": "String"
+						},
+						"filename": {
+							"value": {
+								"value": "@concat(pipeline().parameters.dir_name,'/mgmt_xtinfra.infra_dr_backup_master.bck')",
+								"type": "Expression"
+							},
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "DedicatedForBackup",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"DBName": {
+							"value": "@pipeline().parameters.db_name",
+							"type": "Expression"
+						},
+						"WorkspaceName": {
+							"value": "@pipeline().parameters.wks_name",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "if remaining tables is not 0 then fail",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Backup infra_dr_backup_master",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(variables('remaining_tables'), 0)",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "Backup Operation Failed",
+							"type": "Fail",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"message": {
+									"value": "@string(activity('Backup All Tables').error)",
+									"type": "Expression"
+								},
+								"errorCode": "BACKUP_OPERATION_FAILURE"
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"dir_name": {
+				"type": "string"
+			},
+			"wks_name": {
+				"type": "string"
+			},
+			"db_name": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"remaining_tables": {
+				"type": "Integer",
+				"defaultValue": 1
+			},
+			"retry_count": {
+				"type": "Integer",
+				"defaultValue": 5
+			},
+			"temp_iterator": {
+				"type": "Integer",
+				"defaultValue": 5
+			}
+		},
+		"annotations": []
+	}
+}

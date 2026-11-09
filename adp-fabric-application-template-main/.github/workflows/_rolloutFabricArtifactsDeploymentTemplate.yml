@@ -1,0 +1,173 @@
+name: Deploy-To-Fabric
+
+on:
+  workflow_dispatch:
+    inputs:
+      customer:
+        description: "Customer name, e.g. ids, azuk"
+        required: true
+        default: "azpoc"
+
+      environment:
+        description: "Customer environment code (e.g. 0001, 0002)"
+        required: true
+        default: "0001"
+
+      interactive_stage:
+        description: "The stage where last code state is developed interactively in Fabric Portal (e.g. dev). Currently only dev is supported. Hard Coded in python"
+        required: true
+        default: "dev"
+
+      target_stage:
+        description: "Target stage (GitHub environment: tst, prd) to which the code should be staged"
+        required: true
+        type: choice
+        default: tst
+        options:
+          - tst
+          - prd
+
+      # Is the one used in the 'Export-Fabric-Workspace-Items' workflow and leads to the subfolder names in the 'workspace' folder of this repo.
+      # Feature 'disaster_recovery' not tested yet with value 'true'
+      workspace_suffix:
+        description: "Enter workspace name and disaster recovery flag"
+        required: true
+        default: '[{"workspace":"base001","disaster_recovery":"false"}, {"workspace":"base001eng001","disaster_recovery":"false"}]'
+
+      # not yet tested for item type 'Variable Libraries'
+      items_in_scope:
+        description: "Enter Fabric items types to be deployed"
+        required: true
+        default: "[VariableLibrary,DataPipeline,Environment,Notebook,Report,SemanticModel,Lakehouse,Warehouse,Dataflow]"
+
+      release_version:
+        description: "Release Version"
+        required: true
+        default: "v1.6"
+
+jobs:
+  Deployment:
+    permissions:
+      contents: read
+    runs-on: [self-hosted, linux, adp]
+    name: Deploy to Fabric Workspace
+
+    environment: ${{ inputs.target_stage }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ github.repository }}
+          ref: refs/tags/${{ inputs.release_version }}
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+
+      - name: Cache pip
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/.cache/pip
+          key: ${{ runner.os }}-pip
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install fabric-cicd
+          pip install ms-fabric-cli
+
+      # Build target workspace list + DR flags
+      - name: Build workspace data
+        id: build_workspaces
+        env:
+          WORKSPACE_SUFFIX: ${{ inputs.workspace_suffix }}
+          INPUT_CUSTOMER: ${{ inputs.customer }}
+          INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          INPUT_TARGET_STAGE: ${{ inputs.target_stage }}
+        run: |
+          WORKSPACES="$WORKSPACE_SUFFIX"
+
+          TGT_WORKSPACES=()
+          DR_FLAGS=()
+
+          count=$(echo "$WORKSPACES" | jq length)
+
+          for i in $(seq 0 $((count - 1))); do
+            suffix=$(echo "$WORKSPACES" | jq -r ".[$i].workspace")
+            dr=$(echo "$WORKSPACES" | jq -r ".[$i].disaster_recovery")
+
+            TGT_WS="${INPUT_CUSTOMER}-${INPUT_ENVIRONMENT}-${INPUT_TARGET_STAGE}-${suffix}"
+
+            TGT_WORKSPACES+=("$TGT_WS")
+            DR_FLAGS+=("$dr")
+          done
+
+          echo "target_workspaces=$(IFS=','; echo "${TGT_WORKSPACES[*]}")" >> $GITHUB_OUTPUT
+          echo "dr_flags=$(IFS=','; echo "${DR_FLAGS[*]}")" >> $GITHUB_OUTPUT
+
+          echo "Target workspaces:"
+          printf '%s\n' "${TGT_WORKSPACES[@]}"
+
+          echo "DR flags:"
+          printf '%s\n' "${DR_FLAGS[@]}"
+
+      # Execute deployment
+      - name: Execute deployment
+        env:
+          WORKSPACE_SUFFIX: ${{ inputs.workspace_suffix }}
+          INPUT_TARGET_STAGE: ${{ inputs.target_stage }}
+          INPUT_GITHUB_WORKSPACE: ${{ github.workspace }}
+          INPUT_GITHUB_REF: ${{ github.ref }}
+          INPUT_ITEMS_IN_SCOPE: ${{ inputs.items_in_scope }}
+          INPUT_TENANT_ID: ${{ secrets.TENANT_ID }}
+          BUILD_TARGET_WORKSPACES: ${{ steps.build_workspaces.outputs.target_workspaces }}
+          BUILD_DR_FLAGS: ${{ steps.build_workspaces.outputs.dr_flags }}
+          base001_CLIENT_ID: ${{ secrets.base001_CLIENT_ID }}
+          base001_CLIENT_SECRET: ${{ secrets.base001_CLIENT_SECRET }}
+          base001eng001_CLIENT_ID: ${{ secrets.base001eng001_CLIENT_ID }}
+          base001eng001_CLIENT_SECRET: ${{ secrets.base001eng001_CLIENT_SECRET }}
+        run: |
+          WORKSPACES="$WORKSPACE_SUFFIX"
+
+          IFS=',' read -ra TGT_WS <<< "$BUILD_TARGET_WORKSPACES"
+          IFS=',' read -ra DR_FLAGS <<< "$BUILD_DR_FLAGS"
+
+          count=$(echo "$WORKSPACES" | jq length)
+
+          for i in $(seq 0 $((count - 1))); do
+            suffix=$(echo "$WORKSPACES" | jq -r ".[$i].workspace")
+            dr=$(echo "$WORKSPACES" | jq -r ".[$i].disaster_recovery")
+
+            TGT_WS=$(echo "${TGT_WS[$i]}" | xargs)
+
+            CLIENT_ID_VAR="${suffix}_CLIENT_ID"
+            CLIENT_SECRET_VAR="${suffix}_CLIENT_SECRET"
+
+            CLIENT_ID=$(printenv "$CLIENT_ID_VAR")
+            CLIENT_SECRET=$(printenv "$CLIENT_SECRET_VAR")
+
+            if [ -z "$CLIENT_ID" ] || [ -z "$CLIENT_SECRET" ]; then
+              echo "Missing credentials for suffix: $suffix"
+              exit 1
+            fi
+
+            echo "=== Deploying $TGT_WS (DR=$dr) ==="
+
+            python '.github/workflows/scripts/deploy-to-fabric.py' \
+              --stage "$INPUT_TARGET_STAGE" \
+              --workdir "$INPUT_GITHUB_WORKSPACE" \
+              --branch "$INPUT_GITHUB_REF" \
+              --workspace "[{\"workspace\":\"$TGT_WS\",\"disaster_recovery\":\"$dr\"}]" \
+              --aztenantid "$INPUT_TENANT_ID" \
+              --azclientid "$CLIENT_ID" \
+              --azspsecret "$CLIENT_SECRET" \
+              --items_in_scope "$INPUT_ITEMS_IN_SCOPE"
+          done
+
+      # Debug
+      - name: debug
+        run: |
+          cat "/home/actions/actions-runner/_work/${{ github.event.repository.name }}/${{ github.event.repository.name }}/fabric_cicd.error.log"

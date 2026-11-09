@@ -1,0 +1,106 @@
+name: Scale-Fabric-Capacity
+run-name: Scale ${{ github.head_ref || github.ref_name }} capacity '${{ inputs.capacity }}' to '${{ inputs.sku }}' by @${{ github.actor }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      capacity:
+        description: "Capacity name"
+        type: string
+        required: true
+        default: "fcazadppocdevd001"
+
+      stage:
+        description: "Stage"
+        type: choice
+        required: true
+        options:
+          - "dev"
+          - "tst"
+          - "prd"
+        default: "dev"
+
+      customer:
+        description: "Customer code"
+        type: string
+        required: true
+        default: "azadppoc"
+
+      sku:
+        description: "Target SKU"
+        type: choice
+        required: true
+        options:
+          - "F2"
+          - "F4"
+          - "F8"
+          - "F16"
+          - "F32"
+          - "F64"
+          - "F128"
+          - "F256"
+          - "F512"
+          - "F1024"
+        default: "F2"
+
+env:
+  DEFAULT_CAPACITY: "fcazadppocdevd001"
+  DEFAULT_STAGE: "dev"
+  DEFAULT_CUSTOMER: "azadppoc"
+  DEFAULT_SKU: "F2"
+
+permissions:
+  contents: read
+
+jobs:
+  # Parameter preparation job
+  create-params:
+    runs-on: [self-hosted, Linux, X64, adp]
+    outputs:
+      capacity: ${{ github.event_name == 'workflow_dispatch' && inputs.capacity || env.DEFAULT_CAPACITY }}
+      stage: ${{ github.event_name == 'workflow_dispatch' && inputs.stage || env.DEFAULT_STAGE }}
+      customer: ${{ github.event_name == 'workflow_dispatch' && inputs.customer || env.DEFAULT_CUSTOMER }}
+      sku: ${{ github.event_name == 'workflow_dispatch' && inputs.sku || env.DEFAULT_SKU }}
+      resource_group: rg-${{ github.event_name == 'workflow_dispatch' && inputs.customer || env.DEFAULT_CUSTOMER }}-${{ github.event_name == 'workflow_dispatch' && inputs.stage || env.DEFAULT_STAGE }}-fabric-capacity
+    steps:
+      - name: Prepare parameters
+        run: echo "Preparing parameters for ${{ github.event_name }}"
+
+  scale-capacity:
+    name: Scale Fabric Capacity
+    runs-on: [self-hosted, linux, adp]
+    needs: [create-params]
+    environment: ${{ needs.create-params.outputs.stage }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Azure Login
+        run: |
+          az login --service-principal \
+            --username "${{ secrets.APP_ID }}" \
+            --password "${{ secrets.APP_SECRET }}" \
+            --tenant "${{ secrets.TENANT_ID }}"
+
+          az account set --subscription "${{ secrets.SUBSCRIPTION_ID }}"
+
+      - name: Scale Fabric Capacity
+        env:
+          CAPACITY_NAME: ${{ needs.create-params.outputs.capacity }}
+          RESOURCE_GROUP: ${{ needs.create-params.outputs.resource_group }}
+          CAPACITY_SKU: ${{ needs.create-params.outputs.sku }}
+          SUBSCRIPTION_ID: ${{ secrets.SUBSCRIPTION_ID }}
+        run: |
+          echo "Scaling capacity: ${CAPACITY_NAME} to SKU: ${CAPACITY_SKU}"
+
+          az resource update \
+            --name "${CAPACITY_NAME}" \
+            --resource-group "${RESOURCE_GROUP}" \
+            --resource-type "Microsoft.Fabric/capacities" \
+            --set sku.name="${CAPACITY_SKU}" \
+            --subscription "${SUBSCRIPTION_ID}"
+
+      - name: Logout
+        run: |
+          az logout

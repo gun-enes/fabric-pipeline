@@ -1,0 +1,168 @@
+name: SPF-0091-pool pause/resume scheduler
+
+on:
+  schedule:
+    - cron: '0 7 * * 1-5'   # Mon-Fri 09:00 UTC -> resume
+    - cron: '0 18 * * 1-5'  # Mon-Fri 20:00 UTC -> pause
+
+permissions:
+  contents: read
+
+env:
+  SUBSCRIPTION_ID: 'dbb4728c-24de-44b6-b877-f8efef8a73de'
+  RESOURCE_GROUP_NAME: 'rg-spf-0091-dev-mgmt'
+  WORKSPACE_NAME: 'synw-spf-0091-dev-mgmt'
+
+jobs:
+  manage-pools:
+    name: Manage pool ${{ matrix.pool }}
+    runs-on: [adp]
+    environment: 'db_dev'
+    strategy:
+      fail-fast: false
+      matrix:
+        pool: [hungarianCS, pool_adp]
+    steps:
+      - name: Determine requested action
+        id: pool_action_info
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event.schedule }}" = "0 7 * * 1-5" ]; then
+            req_action="resume"
+          else
+            req_action="pause"
+          fi
+          echo "action=${req_action}" >> "${GITHUB_OUTPUT}"
+
+      - name: Azure Login
+        id: azure_login
+        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
+        with:
+          creds: '{"clientId":"${{ secrets.CLIENT_ID }}","clientSecret":"${{ secrets.CLIENT_SECRET }}","tenantId":"${{ secrets.TENANT_ID }}","subscriptionId":"${{ env.SUBSCRIPTION_ID }}"}'
+
+      - name: Get pool status
+        id: get_pool_status
+        shell: bash
+        env:
+          MGMT_SYNW_NAME: ${{ env.WORKSPACE_NAME }}
+          MGMT_SYNW_RG_NAME: ${{ env.RESOURCE_GROUP_NAME }}
+          MGMT_SYNW_SQLPOOL_NAME: ${{ matrix.pool }}
+          ARM_SUBSCRIPTION_ID: ${{ env.SUBSCRIPTION_ID }}
+        run: |
+          set -euo pipefail
+          status=$(
+            az synapse sql pool show \
+              --name "${MGMT_SYNW_SQLPOOL_NAME}" \
+              --workspace-name "${MGMT_SYNW_NAME}" \
+              --resource-group "${MGMT_SYNW_RG_NAME}" \
+              --subscription "${ARM_SUBSCRIPTION_ID}" \
+              --output json | jq -r '.status'
+          )
+          echo "status=${status}" >> "${GITHUB_OUTPUT}"
+
+          echo "Pool ${MGMT_SYNW_SQLPOOL_NAME} is in '${status}' state"
+
+      - name: Resume pool if paused
+        id: resume_pool
+        if: steps.pool_action_info.outputs.action == 'resume' && steps.get_pool_status.outputs.status == 'Paused'
+        shell: bash
+        env:
+          MGMT_SYNW_NAME: ${{ env.WORKSPACE_NAME }}
+          MGMT_SYNW_RG_NAME: ${{ env.RESOURCE_GROUP_NAME }}
+          MGMT_SYNW_SQLPOOL_NAME: ${{ matrix.pool }}
+          ARM_SUBSCRIPTION_ID: ${{ env.SUBSCRIPTION_ID }}
+        run: |
+          set -euo pipefail
+          echo "Resuming ${MGMT_SYNW_NAME} pool ${MGMT_SYNW_SQLPOOL_NAME}"
+          az synapse sql pool resume \
+            --name "${MGMT_SYNW_SQLPOOL_NAME}" \
+            --workspace-name "${MGMT_SYNW_NAME}" \
+            --resource-group "${MGMT_SYNW_RG_NAME}" \
+            --subscription "${ARM_SUBSCRIPTION_ID}" \
+            --output none
+
+            new_status=$(
+              az synapse sql pool show \
+                --name "${MGMT_SYNW_SQLPOOL_NAME}" \
+                --workspace-name "${MGMT_SYNW_NAME}" \
+                --resource-group "${MGMT_SYNW_RG_NAME}" \
+                --subscription "${ARM_SUBSCRIPTION_ID}" \
+                --output json | jq -r '.status'
+            )
+
+          {
+            echo "### Resume result — ${MGMT_SYNW_SQLPOOL_NAME}"
+            if [ "${new_status}" = "Online" ]; then
+              echo "Pool is now \`Online\`."
+            else
+              echo "Resume submitted but pool did not reach \`Online\`. Last observed status: \`${new_status}\`."
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+          if [ "${new_status}" != "Online" ]; then
+            exit 1
+          fi
+
+      - name: Pause pool if online
+        id: pause_pool
+        if: steps.pool_action_info.outputs.action == 'pause' && steps.get_pool_status.outputs.status == 'Online'
+        shell: bash
+        env:
+          MGMT_SYNW_NAME: ${{ env.WORKSPACE_NAME }}
+          MGMT_SYNW_RG_NAME: ${{ env.RESOURCE_GROUP_NAME }}
+          MGMT_SYNW_SQLPOOL_NAME: ${{ matrix.pool }}
+          ARM_SUBSCRIPTION_ID: ${{ env.SUBSCRIPTION_ID }}
+        run: |
+          set -euo pipefail
+          echo "Pausing ${MGMT_SYNW_NAME} pool ${MGMT_SYNW_SQLPOOL_NAME}"
+          az synapse sql pool pause \
+            --name "${MGMT_SYNW_SQLPOOL_NAME}" \
+            --workspace-name "${MGMT_SYNW_NAME}" \
+            --resource-group "${MGMT_SYNW_RG_NAME}" \
+            --subscription "${ARM_SUBSCRIPTION_ID}" \
+            --output none
+
+            new_status=$(
+              az synapse sql pool show \
+                --name "${MGMT_SYNW_SQLPOOL_NAME}" \
+                --workspace-name "${MGMT_SYNW_NAME}" \
+                --resource-group "${MGMT_SYNW_RG_NAME}" \
+                --subscription "${ARM_SUBSCRIPTION_ID}" \
+                --output json | jq -r '.status'
+            )
+
+          {
+            echo "### Pause result — ${MGMT_SYNW_SQLPOOL_NAME}"
+            if [ "${new_status}" = "Paused" ]; then
+              echo "Pool is now \`Paused\`."
+            else
+              echo "Pause submitted but pool did not reach \`Paused\` . Last observed status: \`${new_status}\`."
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+          if [ "${new_status}" != "Paused" ]; then
+            exit 1
+          fi
+
+      - name: No action needed
+        shell: bash
+        if: |
+          (steps.pool_action_info.outputs.action == 'pause' && steps.get_pool_status.outputs.status != 'Online') ||
+          (steps.pool_action_info.outputs.action == 'resume' && steps.get_pool_status.outputs.status != 'Paused')
+        env:
+          CURRENT_STATUS: ${{ steps.get_pool_status.outputs.status }}
+          REQUESTED_ACTION: ${{ steps.pool_action_info.outputs.action }}
+          POOL_NAME: ${{ matrix.pool }}
+        run: |
+          set -euo pipefail
+          echo "Pool ${POOL_NAME} is in '${CURRENT_STATUS}' state, requested action is '${REQUESTED_ACTION}'. No action taken."
+          {
+            echo "### No action taken — ${POOL_NAME}"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Requested action | ${REQUESTED_ACTION} |"
+            echo "| Current pool status | \`${CURRENT_STATUS}\` |"
+            echo "| Result | No action taken — requested action does not apply to current status. |"
+          } >> "${GITHUB_STEP_SUMMARY}"

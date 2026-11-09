@@ -1,0 +1,72 @@
+{
+	"name": "infraScheduleTable",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "synw-spf-0091-dev-mgmt-WorkspaceDefaultSqlServer",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"DBName": {
+					"value": "@dataset().dbName",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"dbName": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "AzureSqlDWTable",
+		"schema": [
+			{
+				"name": "key",
+				"type": "nvarchar"
+			},
+			{
+				"name": "crontab",
+				"type": "nvarchar"
+			},
+			{
+				"name": "hour",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "day_of_month",
+				"type": "nvarchar"
+			},
+			{
+				"name": "month",
+				"type": "nvarchar"
+			},
+			{
+				"name": "day_of_week",
+				"type": "nvarchar"
+			},
+			{
+				"name": "schedule_action",
+				"type": "nvarchar"
+			},
+			{
+				"name": "priority",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "created_at",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "requestor",
+				"type": "nvarchar"
+			}
+		],
+		"typeProperties": {
+			"schema": "mgmt_xtinfra",
+			"table": "infra_schedule"
+		}
+	}
+}

@@ -1,0 +1,27 @@
+{
+	"name": "schedule_Dataset",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "synw-spf-0091-dev-mgmt-WorkspaceDefaultSqlServer",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"DBName": {
+					"value": "@dataset().dbName",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"dbName": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "AzureSqlDWTable",
+		"schema": [],
+		"typeProperties": {
+			"tableName": "mgmt_xtinfra.infra_schedule"
+		}
+	},
+	"type": "Microsoft.Synapse/workspaces/datasets"
+}

@@ -1,0 +1,118 @@
+{
+  "name": "sqlPoolsStatefile",
+  "properties": {
+    "linkedServiceName": {
+      "referenceName": "synw-spf-0091-dev-mgmt-WorkspaceDefaultStorage",
+      "type": "LinkedServiceReference"
+    },
+    "parameters": {
+      "workspace_name": {
+        "type": "String",
+        "defaultValue": "synw-spf-0091-dev-mgmt"
+      }
+    },
+    "annotations": [],
+    "type": "Json",
+    "typeProperties": {
+      "location": {
+        "type": "AzureBlobFSLocation",
+        "fileName": {
+          "value": "@concat(dataset().workspace_name,'_sqlPools.json')",
+          "type": "Expression"
+        },
+        "folderPath": "sqlPoolStateFiles",
+        "fileSystem": "sac-mgmt-main"
+      }
+    },
+    "schema": {
+      "type": "object",
+      "properties": {
+        "properties": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string"
+            },
+            "maxSizeBytes": {
+              "type": "integer"
+            },
+            "collation": {
+              "type": "string"
+            },
+            "creationDate": {
+              "type": "string"
+            },
+            "storageAccountType": {
+              "type": "string"
+            },
+            "provisioningState": {
+              "type": "string"
+            }
+          }
+        },
+        "sku": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "capacity": {
+              "type": "integer"
+            }
+          }
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "location": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "object",
+          "properties": {
+            "backup": {
+              "type": "string"
+            },
+            "aad_groups_mgmt": {
+              "type": "string"
+            },
+            "acdcaudit": {
+              "type": "string"
+            },
+            "environment": {
+              "type": "string"
+            },
+            "github_repo": {
+              "type": "string"
+            },
+            "mgmt": {
+              "type": "string"
+            },
+            "module_version": {
+              "type": "string"
+            },
+            "pamaudit": {
+              "type": "string"
+            },
+            "prefix": {
+              "type": "string"
+            },
+            "subnet_name_mgmt": {
+              "type": "string"
+            },
+            "terraform": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "type": "Microsoft.Synapse/workspaces/datasets"
+}

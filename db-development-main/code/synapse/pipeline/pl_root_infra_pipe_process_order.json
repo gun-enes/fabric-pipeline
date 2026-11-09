@@ -1,0 +1,266 @@
+{
+	"name": "pl_root_infra_pipe_process_order",
+	"properties": {
+		"activities": [
+			{
+				"name": "Delete Trigger File",
+				"type": "Delete",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.00:10:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "trigger_dataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"folderPath": {
+								"value": "@pipeline().parameters.folder_path",
+								"type": "Expression"
+							},
+							"fileName": {
+								"value": "@pipeline().parameters.file_name",
+								"type": "Expression"
+							}
+						}
+					},
+					"enableLogging": false,
+					"storeSettings": {
+						"type": "AzureBlobFSReadSettings",
+						"recursive": false,
+						"enablePartitionDiscovery": false
+					}
+				}
+			},
+			{
+				"name": "Until Orders Are Processed",
+				"description": "Process Orders Until Success or Retry Count Is Set to Zero",
+				"type": "Until",
+				"dependsOn": [
+					{
+						"activity": "Delete Trigger File",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@or(equals(variables('process_successful'), true), equals(variables('retry_count'), 0))",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "SP_INFRA_PROCESS_ORDERS",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "Set retry count variable",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.00:40:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "mgmt_xtinfra.sp_infra_process_orders"
+							},
+							"linkedServiceName": {
+								"referenceName": "synw-spf-0091-dev-mgmt-WorkspaceDefaultSqlServer",
+								"type": "LinkedServiceReference",
+								"parameters": {
+									"DBName": {
+										"value": "@pipeline().parameters.database_name",
+										"type": "Expression"
+									}
+								}
+							}
+						},
+						{
+							"name": "TerminateSession",
+							"type": "Script",
+							"dependsOn": [
+								{
+									"activity": "SP_INFRA_PROCESS_ORDERS",
+									"dependencyConditions": [
+										"Failed"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.00:20:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"linkedServiceName": {
+								"referenceName": "synw-spf-0091-dev-mgmt-WorkspaceDefaultSqlServer",
+								"type": "LinkedServiceReference",
+								"parameters": {
+									"DBName": {
+										"value": "@pipeline().parameters.database_name",
+										"type": "Expression"
+									}
+								}
+							},
+							"typeProperties": {
+								"scripts": [
+									{
+										"type": "Query",
+										"text": "IF OBJECT_ID('tempdb..#SessionIDs') IS NULL\nBEGIN\n    CREATE TABLE #SessionIDs (session_id NVARCHAR(100));\nEND\nBEGIN\n\n    TRUNCATE TABLE #SessionIDs;\n\t\n    INSERT INTO #SessionIDs (session_id)\n    SELECT DISTINCT session_id\n    FROM sys.dm_pdw_exec_requests\n    WHERE command LIKE '%sp_infra_process_orders%'\n    AND status = 'Running'\n    AND session_id <> SESSION_ID()\n    DECLARE @session_id NVARCHAR(100);\n    WHILE EXISTS (SELECT 1 FROM #SessionIDs)\n    BEGIN\n        -- Retrieve the next session ID\n        SET @session_id = (SELECT TOP 1 session_id FROM #SessionIDs);\n        DECLARE @sql_stmt NVARCHAR(MAX) = N'KILL '''+ @session_id + '''';\n        EXEC [sp_executesql] @sql_stmt;\n        DELETE FROM #SessionIDs WHERE session_id = @session_id;\n    END\nEND\nDROP TABLE #SessionIDs;"
+									}
+								],
+								"scriptBlockExecutionTimeout": "02:00:00"
+							}
+						},
+						{
+							"name": "Set temporary iterator variable",
+							"description": "Set temporary iterator variable by decrementing retry_count",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "temp_iterator",
+								"value": {
+									"value": "@sub(variables('retry_count'), 1)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Set retry count variable",
+							"description": "Set retry count variable from temporary iterator variable",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Set temporary iterator variable",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "retry_count",
+								"value": {
+									"value": "@variables('temp_iterator')",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Set sproc execution result variable",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "SP_INFRA_PROCESS_ORDERS",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "process_successful",
+								"value": {
+									"value": "@if(empty(activity('SP_INFRA_PROCESS_ORDERS').error), true, false)",
+									"type": "Expression"
+								}
+							}
+						}
+					],
+					"timeout": "0.03:00:00"
+				}
+			},
+			{
+				"name": "If process_successful variable is false then fail",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Until Orders Are Processed",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@variables('process_successful')",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "Fail to set pipeline run result correctly",
+							"type": "Fail",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"message": {
+									"value": "@string(activity('SP_INFRA_PROCESS_ORDERS').error)",
+									"type": "Expression"
+								},
+								"errorCode": "PROCESS_ORDERS_FAILED"
+							}
+						}
+					]
+				}
+			}
+		],
+		"concurrency": 1,
+		"parameters": {
+			"database_name": {
+				"type": "string",
+				"defaultValue": "dpspf009101"
+			},
+			"folder_path": {
+				"type": "string"
+			},
+			"file_name": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"retry_count": {
+				"type": "Integer",
+				"defaultValue": 3
+			},
+			"process_successful": {
+				"type": "Boolean",
+				"defaultValue": false
+			},
+			"temp_iterator": {
+				"type": "Integer",
+				"defaultValue": 3
+			}
+		},
+		"annotations": []
+	}
+}
