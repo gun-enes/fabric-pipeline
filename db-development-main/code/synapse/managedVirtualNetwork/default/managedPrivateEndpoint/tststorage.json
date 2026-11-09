@@ -1,7 +1,0 @@
-{
-  "name": "tststorage",
-  "properties": {
-    "privateLinkResourceId": "/subscriptions/f0daee24-ae00-432c-8b83-4b4c9cb2e04c/resourceGroups/rg-tests/providers/Microsoft.Storage/storageAccounts/sqlexprtstg",
-    "groupId": "blob"
-  }
-}

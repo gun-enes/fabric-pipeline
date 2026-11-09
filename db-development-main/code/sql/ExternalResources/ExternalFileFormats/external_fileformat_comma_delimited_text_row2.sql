@@ -1,6 +1,0 @@
-CREATE EXTERNAL FILE FORMAT [external_fileformat_comma_delimited_text_row2]
-WITH (
-    FORMAT_TYPE = DELIMITEDTEXT,
-    FORMAT_OPTIONS (FIELD_TERMINATOR = N',', FIRST_ROW = 2, USE_TYPE_DEFAULT = False)
-);
-GO

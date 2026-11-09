@@ -1,7 +1,0 @@
-{
-  "name": "DataLakeCuratedRestoreSource",
-  "properties": {
-    "privateLinkResourceId": "/subscriptions/dbb4728c-24de-44b6-b877-f8efef8a73de/resourceGroups/rg-spf-0091-dev-stg/providers/Microsoft.Storage/storageAccounts/stspf0091devcur",
-    "groupId": "dfs"
-  }
-}
