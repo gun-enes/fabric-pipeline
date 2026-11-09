@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "nb_change_parquette_file"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "560b3e16-17a0-ba4e-439e-fe00cff5321a"
+  }
+}

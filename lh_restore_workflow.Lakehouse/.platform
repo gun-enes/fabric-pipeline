@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Lakehouse",
+    "displayName": "lh_restore_workflow"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "27491700-7415-88c3-4eb4-46a69c01a368"
+  }
+}
